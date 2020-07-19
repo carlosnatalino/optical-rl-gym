@@ -54,7 +54,23 @@ You can see the dependencies in the [setup.py](setup.py) file.
 
 <a href="#examples"><h2>Examples</h2></a>
 
-We provide a growing set of [examples](./examples) 
+Training a RL agent for one of the Optical RL-Gym environments can be done with a few lines of code.
+
+For instance, you can use a [Stable Baselines](https://github.com/hill-a/stable-baselines) agent trained for the RMSA environment:
+
+```python
+# define the parameters of the RMSA environment
+env_args = dict(topology=topology, seed=10, allow_rejection=False, 
+                load=50, episode_length=50)
+# create the environment
+env = gym.make('RMSA-v0', **env_args)
+# create the agent
+agent = PPO2(MlpPolicy, env)
+# run 10k learning timesteps
+agent.learn(total_timesteps=10000)
+```
+
+We provide a set of [examples](./examples).
 
 <a href="#resources"><h2>Resources</h2></a>
 
