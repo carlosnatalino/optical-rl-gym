@@ -26,6 +26,8 @@ Please use the following bibtex:
 2. <a href="#environments">Environments</a>
 3. <a href="#examples">Examples</a>
 4. <a href="#resources">Resources</a>
+5. <a href="#contributors">Contributors</a>
+6. <a href="#contact">Contact</a>
 
 <a href="#installation"><h2>Installation</h2></a>
 
@@ -74,5 +76,16 @@ We provide a set of [examples](./examples).
 
 <a href="#resources"><h2>Resources</h2></a>
 
-- Introductory paper `The {Optical RL-Gym}: an open-source toolkit for applying reinforcement learning in optical networks` [[paper/pdf]()] [[presentation/pdf]()] [[presentation/YouTube]()].
+- Introductory paper `The Optical RL-Gym: an open-source toolkit for applying reinforcement learning in optical networks` (paper and video to be published soon).
 - [List of publications using Optical RL-Gym](./docs/PUBLICATIONS.md)
+
+<a href="#contributors"><h2>Contributors</h2></a>
+
+Here is a list of people who have contributed to this project:
+
+- Igor M. de Araújo [[GitHub](https://github.com/igormaraujo/)]
+- Paolo Monti [[Personal page](https://www.chalmers.se/en/staff/Pages/Paolo-Monti.aspx)]
+
+<a href="#contact"><h2>Contact</h2></a>
+
+This project is maintained by Carlos Natalino [[Twitter](https://twitter.com/NatalinoCarlos)], who can be contacted through carlos.natalino@chalmers.se.
