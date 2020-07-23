@@ -20,6 +20,15 @@ Please use the following bibtex:
 }
 ```
 
+## Features
+
+Across all the environments, the following features are available:
+
+- Use of [NetworkX](https://networkx.github.io/) for the topology graph representation, resource and path computation.
+- Uniform and non-uniform traffic generation.
+- Flag to let agents proactively reject requests or not.
+- Appropriate random number generation with seed management providing reproducibility of results.
+
 ## Content of this document
 
 1. <a href="#installation">Installation</a>
@@ -51,8 +60,12 @@ You can see the dependencies in the [setup.py](setup.py) file.
 
 <a href="#environments"><h2>Environments</h2></a>
 
-1. WDMEnv
-2. EONEnv
+At this moment, the following environments are ready for use:
+
+1. RWAEnv
+2. RMSAEnv
+
+More environments will be added in the near future.
 
 <a href="#examples"><h2>Examples</h2></a>
 
