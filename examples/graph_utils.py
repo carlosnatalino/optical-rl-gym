@@ -86,7 +86,7 @@ def read_txt_file(file):
                 num_links = int(line)
             elif len(line) > 1:
                 info = line.replace('\n', '').split(' ')
-                graph.add_edge(info[0], info[1], id=id_link, index=id_link, weight=int(info[2]))
+                graph.add_edge(info[0], info[1], id=id_link, index=id_link, weight=1, length=int(info[2]))
                 id_link += 1
 
     return graph

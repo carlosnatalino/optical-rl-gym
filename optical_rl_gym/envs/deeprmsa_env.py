@@ -87,12 +87,12 @@ class DeepRMSAEnv(RMSAEnv):
         return super().reset(only_counters=only_counters)
 
     def _get_path_block_id(self, action: int) -> (int, int):
-        path = action // self.k_paths
-        block = action % self.k_paths
+        path = action // self.j
+        block = action % self.j
         return path, block
 
 
-def shortest_path_first_fit(env: RMSAEnv) -> int:
+def shortest_path_first_fit(env: DeepRMSAEnv) -> int:
     if not env.allow_rejection:
         return 0
     else:
@@ -103,9 +103,9 @@ def shortest_path_first_fit(env: RMSAEnv) -> int:
             return env.k_paths * env.j
 
 
-def shortest_available_path_first_fit(env: RMSAEnv) -> int:
+def shortest_available_path_first_fit(env: DeepRMSAEnv) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         initial_indices, lengths = env.get_available_blocks(idp)
         if len(initial_indices) > 0: # if there are available slots
-            return idp * env.k_paths # this path uses the first one
+            return idp * env.j # this path uses the first one
     return env.k_paths * env.j

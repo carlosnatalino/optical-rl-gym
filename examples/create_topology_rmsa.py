@@ -36,14 +36,14 @@ def get_topology(file_name, topology_name, modulations, k_paths=5):
     for idn1, n1 in enumerate(topology.nodes()):
         for idn2, n2 in enumerate(topology.nodes()):
             if idn1 < idn2:
-                paths = get_k_shortest_paths(topology, n1, n2, k_paths)
-                # print(n1, n2, len(paths))
-                lengths = [get_path_weight(topology, path) for path in paths]
+                paths = get_k_shortest_paths(topology, n1, n2, k_paths, weight='length')
+                print(n1, n2, len(paths))
+                lengths = [get_path_weight(topology, path, weight='length') for path in paths]
                 selected_modulations = [get_modulation_format(length, modulations) for length in lengths]
                 objs = []
                 for path, length, modulation in zip(paths, lengths, selected_modulations):
                     objs.append(Path(idp, path, length, best_modulation=modulation))
-                    print(idp, length, modulation, path)
+                    print('\t', idp, length, modulation, path)
                     idp += 1
                 k_shortest_paths[n1, n2] = objs
                 k_shortest_paths[n2, n1] = objs

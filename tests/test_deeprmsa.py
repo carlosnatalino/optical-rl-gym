@@ -27,7 +27,7 @@ node_request_probabilities = np.array([0.01801802, 0.04004004, 0.05305305, 0.019
                                        0.02402402, 0.06706707, 0.08908909, 0.13813814, 0.12212212,
                                        0.07607608, 0.12012012, 0.01901902, 0.16916917])
 env_args = dict(topology=topology, seed=10, allow_rejection=False,
-                mean_service_holding_time=7.5, episode_length=50, j=1,
+                mean_service_holding_time=7.5, episode_length=50, j=2,
                 node_request_probabilities=node_request_probabilities)
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
