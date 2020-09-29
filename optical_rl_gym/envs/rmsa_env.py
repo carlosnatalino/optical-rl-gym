@@ -152,7 +152,7 @@ class RMSAEnv(OpticalNetworkEnv):
         self.topology.graph["compactness"] = 0.
         self.topology.graph["throughput"] = 0.
         for idx, lnk in enumerate(self.topology.edges()):
-            self.topology[lnk[0]][lnk[1]]['fragmentation'] = 0.
+            self.topology[lnk[0]][lnk[1]]['external_fragmentation'] = 0.
             self.topology[lnk[0]][lnk[1]]['compactness'] = 0.
 
         self._new_service = False
@@ -207,45 +207,14 @@ class RMSAEnv(OpticalNetworkEnv):
             last_compactness = self.topology.graph['compactness']
 
             cur_throughput = 0.
-            sum_slots_paths = 0  # this accounts for the sum of all Bi * Hi
 
             for service in self.topology.graph["running_services"]:
                 cur_throughput += service.bit_rate
-                sum_slots_paths += service.number_slots * service.route.hops
 
             throughput = ((last_throughput * last_update) + (cur_throughput * time_diff)) / self.current_time
             self.topology.graph['throughput'] = throughput
 
-            # implementing network spectrum compactness from https://ieeexplore.ieee.org/abstract/document/6476152
-
-            # this accounts for the sum of used blocks, i.e.,
-            # \sum_{j=1}^{M} (\lambda_{max}^j - \lambda_{min}^j)
-            sum_occupied = 0
-
-            # this accounts for the number of unused blocks \sum_{j=1}^{M} K_j
-            sum_unused_spectrum_blocks = 0
-
-            for n1, n2 in self.topology.edges():
-                # getting the blocks
-                initial_indices, values, lengths = \
-                    RMSAEnv.rle(self.topology.graph['available_slots'][self.topology[n1][n2]['index'], :])
-                used_blocks = [i for i, x in enumerate(values) if x == 0]
-                if len(used_blocks) > 1:
-                    lambda_min = initial_indices[used_blocks[0]]
-                    lambda_max = initial_indices[used_blocks[-1]] + lengths[used_blocks[-1]]
-                    sum_occupied += lambda_max - lambda_min # we do not put the "+1" because we use zero-indexed arrays
-
-                    # evaluate again only the "used part" of the spectrum
-                    internal_idx, internal_values, internal_lengths = RMSAEnv.rle(
-                        self.topology.graph['available_slots'][self.topology[n1][n2]['index'], lambda_min:lambda_max])
-                    sum_unused_spectrum_blocks += np.sum(1 - internal_values)
-
-            if sum_unused_spectrum_blocks > 0:
-                cur_spectrum_compactness = (sum_occupied / sum_slots_paths) * (self.topology.number_of_edges() /
-                                                                               sum_unused_spectrum_blocks)
-            else:
-                cur_spectrum_compactness = 1.
-            compactness = ((last_compactness * last_update) + (cur_spectrum_compactness * time_diff)) / \
+            compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
                               self.current_time
             self.topology.graph['compactness'] = compactness
 
@@ -257,49 +226,53 @@ class RMSAEnv(OpticalNetworkEnv):
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
             cur_util = (self.num_spectrum_resources - np.sum(
-                self.topology.graph['available_slots'][self.topology[node1][node2]['index'], :])) / self.num_spectrum_resources
+                self.topology.graph['available_slots'][self.topology[node1][node2]['index'], :])) / \
+                       self.num_spectrum_resources
             utilization = ((last_util * last_update) + (cur_util * time_diff)) / self.current_time
             self.topology[node1][node2]['utilization'] = utilization
 
             slot_allocation = self.topology.graph['available_slots'][self.topology[node1][node2]['index'], :]
 
             # implementing fragmentation from https://ieeexplore.ieee.org/abstract/document/6421472
-            last_fragmentation = self.topology[node1][node2]['fragmentation']
+            last_external_fragmentation = self.topology[node1][node2]['external_fragmentation']
             last_compactness = self.topology[node1][node2]['compactness']
 
-            cur_fragmentation = 0.
-            cur_compactness = 0.
+            cur_external_fragmentation = 0.
+            cur_link_compactness = 0.
             if np.sum(slot_allocation) > 0:
-                blocks = np.split(slot_allocation, np.where(np.diff(slot_allocation) != 0)[0] + 1)
+                initial_indices, values, lengths = RMSAEnv.rle(slot_allocation)
+
+                # computing external fragmentation from https://ieeexplore.ieee.org/abstract/document/6421472
+                unused_blocks = [i for i, x in enumerate(values) if x == 1]
                 max_empty = 0
-                for block in blocks:
-                    if np.all(block == 1):
-                        max_empty = max(max_empty, len(block))
-                cur_fragmentation = 1. - (float(max_empty) / float(np.sum(slot_allocation)))
+                if len(unused_blocks) > 1 and unused_blocks != [0, len(values) - 1]:
+                    max_empty = max(lengths[unused_blocks])
+                cur_external_fragmentation = 1. - (float(max_empty) / float(np.sum(slot_allocation)))
 
-                lambdas = np.where(slot_allocation == 0)
-                if len(lambdas) > 1:
-                    lambda_min = np.min(lambdas)
-                    lambda_max = np.max(lambdas)
-                    # alloc = slot_allocation[lambda_min:lambda_max]
-                    blocks = np.split(slot_allocation[lambda_min:lambda_max],
-                                      np.where(np.diff(slot_allocation[lambda_min:lambda_max]) != 0)[0] + 1)
-                    k = 0
-                    for block in blocks:
-                        if np.all(block == 1):
-                            k += 1
-                    # number of blocks of free slots between first and last slot used
-                    if k > 0:
-                        cur_compactness = ((lambda_max - lambda_min + 1) / len(lambdas)) * (1 / k)
+                # computing link spectrum compactness from https://ieeexplore.ieee.org/abstract/document/6421472
+                used_blocks = [i for i, x in enumerate(values) if x == 0]
+
+                if len(used_blocks) > 1:
+                    lambda_min = initial_indices[used_blocks[0]]
+                    lambda_max = initial_indices[used_blocks[-1]] + lengths[used_blocks[-1]]
+
+                    # evaluate again only the "used part" of the spectrum
+                    internal_idx, internal_values, internal_lengths = RMSAEnv.rle(
+                        slot_allocation[lambda_min:lambda_max])
+                    unused_spectrum_slots = np.sum(1 - internal_values)
+
+                    if unused_spectrum_slots > 0:
+                        cur_link_compactness = ((lambda_max - lambda_min) / np.sum(1 - slot_allocation)) * (
+                                    1 / unused_spectrum_slots)
                     else:
-                        cur_compactness = 1.
+                        cur_link_compactness = 1.
                 else:
-                    cur_compactness = 1.
+                    cur_link_compactness = 1.
 
-            fragmentation = ((last_fragmentation * last_update) + (cur_fragmentation * time_diff)) / self.current_time
-            self.topology[node1][node2]['fragmentation'] = fragmentation
+            external_fragmentation = ((last_external_fragmentation * last_update) + (cur_external_fragmentation * time_diff)) / self.current_time
+            self.topology[node1][node2]['external_fragmentation'] = external_fragmentation
 
-            link_compactness = ((last_compactness * last_update) + (cur_compactness * time_diff)) / self.current_time
+            link_compactness = ((last_compactness * last_update) + (cur_link_compactness * time_diff)) / self.current_time
             self.topology[node1][node2]['compactness'] = link_compactness
 
         self.topology[node1][node2]['last_update'] = self.current_time
@@ -404,6 +377,44 @@ class RMSAEnv(OpticalNetworkEnv):
         final_indices = np.intersect1d(available_indices, sufficient_indices)[:self.j]
 
         return initial_indices[final_indices], lengths[final_indices]
+
+    def _get_network_compactness(self):
+        # implementing network spectrum compactness from https://ieeexplore.ieee.org/abstract/document/6476152
+
+        sum_slots_paths = 0  # this accounts for the sum of all Bi * Hi
+
+        for service in self.topology.graph["running_services"]:
+            sum_slots_paths += service.number_slots * service.route.hops
+
+        # this accounts for the sum of used blocks, i.e.,
+        # \sum_{j=1}^{M} (\lambda_{max}^j - \lambda_{min}^j)
+        sum_occupied = 0
+
+        # this accounts for the number of unused blocks \sum_{j=1}^{M} K_j
+        sum_unused_spectrum_blocks = 0
+
+        for n1, n2 in self.topology.edges():
+            # getting the blocks
+            initial_indices, values, lengths = \
+                RMSAEnv.rle(self.topology.graph['available_slots'][self.topology[n1][n2]['index'], :])
+            used_blocks = [i for i, x in enumerate(values) if x == 0]
+            if len(used_blocks) > 1:
+                lambda_min = initial_indices[used_blocks[0]]
+                lambda_max = initial_indices[used_blocks[-1]] + lengths[used_blocks[-1]]
+                sum_occupied += lambda_max - lambda_min  # we do not put the "+1" because we use zero-indexed arrays
+
+                # evaluate again only the "used part" of the spectrum
+                internal_idx, internal_values, internal_lengths = RMSAEnv.rle(
+                    self.topology.graph['available_slots'][self.topology[n1][n2]['index'], lambda_min:lambda_max])
+                sum_unused_spectrum_blocks += np.sum(internal_values)
+
+        if sum_unused_spectrum_blocks > 0:
+            cur_spectrum_compactness = (sum_occupied / sum_slots_paths) * (self.topology.number_of_edges() /
+                                                                           sum_unused_spectrum_blocks)
+        else:
+            cur_spectrum_compactness = 1.
+
+        return cur_spectrum_compactness
 
 
 def shortest_path_first_fit(env: RMSAEnv) -> int:
