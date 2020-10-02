@@ -11,7 +11,7 @@ from .optical_network_env import OpticalNetworkEnv
 
 class QoSConstrainedRA(OpticalNetworkEnv):
     metadata = {
-        'metrics': ['service_blocking_rate', 'service_blocking_rate_since_reset']
+        'metrics': ['service_blocking_rate', 'episode_service_blocking_rate']
     }
 
     def __init__(self, topology=None,
@@ -44,13 +44,13 @@ class QoSConstrainedRA(OpticalNetworkEnv):
         self.reject_action = 1 if allow_rejection else 0
 
         self.actions_output = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.actions_output_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
+        self.episode_actions_output = np.zeros(self.k_paths + self.reject_action, dtype=int)
         self.actions_output_per_class = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
-        self.actions_output_per_class_since_reset = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
+        self.episode_actions_output_per_class = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
         self.actions_taken = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.actions_taken_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
+        self.episode_actions_taken = np.zeros(self.k_paths + self.reject_action, dtype=int)
         self.actions_taken_per_class = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
-        self.actions_taken_per_class_since_reset = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
+        self.episode_actions_taken_per_class = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
         self.action_space = gym.spaces.Discrete(self.k_paths + self.reject_action)
         self.observation_space = gym.spaces.Dict(
             {'topology': gym.spaces.Discrete(10),
@@ -76,11 +76,11 @@ class QoSConstrainedRA(OpticalNetworkEnv):
                 self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][action])
                 self.service.accepted = True
                 self.services_accepted += 1
-                self.services_accepted_since_reset += 1
+                self.episode_services_accepted += 1
 
                 self.actions_taken[action] += 1
                 self.actions_taken_per_class[self.service.service_class, action] += 1
-                self.actions_taken_per_class_since_reset[self.service.service_class, action] += 1
+                self.episode_actions_taken_per_class[self.service.service_class, action] += 1
                 self._add_release(self.service)
             else:
                 self.service.accepted = False
@@ -90,31 +90,29 @@ class QoSConstrainedRA(OpticalNetworkEnv):
         if not self.service.accepted:
             self.actions_taken[self.k_paths] += 1
             self.actions_taken_per_class[self.service.service_class, self.k_paths] += 1
-            self.actions_taken_per_class_since_reset[self.service.service_class, self.k_paths] += 1
+            self.episode_actions_taken_per_class[self.service.service_class, self.k_paths] += 1
 
         self.services_processed += 1
-        self.services_processed_since_reset += 1
+        self.episode_services_processed += 1
 
         self.topology.graph['services'].append(self.service)
 
         reward = self.reward()
         info = {
             'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
-            'service_blocking_rate_since_reset': (self.services_processed_since_reset - self.services_accepted_since_reset) / self.services_processed_since_reset,
+            'episode_service_blocking_rate': (self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
         }
 
         self._new_service = False
         self._next_service()
 
-        return self.observation(), reward, self.services_processed_since_reset == self.episode_length, info
+        return self.observation(), reward, self.episode_services_processed == self.episode_length, info
 
     def reset(self, only_counters=True):
-        self.actions_output_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.actions_output_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.actions_taken_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.actions_taken_since_reset = np.zeros(self.k_paths + self.reject_action, dtype=int)
-        self.services_processed_since_reset = 0
-        self.services_accepted_since_reset = 0
+        self.episode_actions_output = np.zeros(self.k_paths + self.reject_action, dtype=int)
+        self.episode_actions_taken = np.zeros(self.k_paths + self.reject_action, dtype=int)
+        self.episode_services_processed = 0
+        self.episode_services_accepted = 0
         if only_counters:
             return self.observation()
 
@@ -124,8 +122,8 @@ class QoSConstrainedRA(OpticalNetworkEnv):
         self.actions_output = np.zeros(self.k_paths + self.reject_action, dtype=int)
         self.actions_taken = np.zeros(self.k_paths + self.reject_action, dtype=int)
         self.actions_output_per_class = np.zeros((self.num_service_classes, self.k_paths + self.reject_action), dtype=int)
-        self.actions_output_per_class_since_reset = np.zeros((self.num_service_classes,
-                                                             self.k_paths + self.reject_action), dtype=int)
+        self.episode_actions_output_per_class = np.zeros((self.num_service_classes,
+                                                          self.k_paths + self.reject_action), dtype=int)
         self._new_service = False
         self._next_service()
         return self.observation()
@@ -190,7 +188,7 @@ class QoSConstrainedRA(OpticalNetworkEnv):
                 self._add_release(service_to_release)  # puts service back in the queue
                 break  # breaks the look
 
-        self.service = Service(self.services_processed_since_reset, src, src_id, destination=dst, destination_id=dst_id,
+        self.service = Service(self.episode_services_processed, src, src_id, destination=dst, destination_id=dst_id,
                                arrival_time=at, holding_time=ht, number_slots=1,
                                service_class=clazz)
         self._new_service = True

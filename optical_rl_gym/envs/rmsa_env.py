@@ -13,8 +13,8 @@ from .optical_network_env import OpticalNetworkEnv
 class RMSAEnv(OpticalNetworkEnv):
 
     metadata = {
-        'metrics': ['service_blocking_rate', 'service_blocking_rate_since_reset',
-                    'bit_rate_blocking_rate', 'bit_rate_blocking_rate_since_reset']
+        'metrics': ['service_blocking_rate', 'episode_service_blocking_rate',
+                    'bit_rate_blocking_rate', 'episode_bit_rate_blocking_rate']
     }
 
     def __init__(self, topology=None,
@@ -41,8 +41,8 @@ class RMSAEnv(OpticalNetworkEnv):
         # specific attributes for elastic optical networks
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
-        self.bit_rate_requested_since_reset = 0
-        self.bit_rate_provisioned_since_reset = 0
+        self.episode_bit_rate_requested = 0
+        self.episode_bit_rate_provisioned = 0
 
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
@@ -57,15 +57,15 @@ class RMSAEnv(OpticalNetworkEnv):
         self.actions_output = np.zeros((self.k_paths + 1,
                                        self.num_spectrum_resources + 1),
                                        dtype=int)
-        self.actions_output_since_reset = np.zeros((self.k_paths + 1,
-                                                   self.num_spectrum_resources + 1),
-                                                   dtype=int)
+        self.episode_actions_output = np.zeros((self.k_paths + 1,
+                                                self.num_spectrum_resources + 1),
+                                               dtype=int)
         self.actions_taken = np.zeros((self.k_paths + 1,
                                       self.num_spectrum_resources + 1),
                                       dtype=int)
-        self.actions_taken_since_reset = np.zeros((self.k_paths + 1,
-                                                  self.num_spectrum_resources + 1),
-                                                  dtype=int)
+        self.episode_actions_taken = np.zeros((self.k_paths + 1,
+                                               self.num_spectrum_resources + 1),
+                                              dtype=int)
         self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
                                                      self.num_spectrum_resources + self.reject_action))
         self.observation_space = gym.spaces.Dict(
@@ -106,35 +106,35 @@ class RMSAEnv(OpticalNetworkEnv):
             self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
 
         self.services_processed += 1
-        self.services_processed_since_reset += 1
+        self.episode_services_processed += 1
         self.bit_rate_requested += self.service.bit_rate
-        self.bit_rate_requested_since_reset += self.service.bit_rate
+        self.episode_bit_rate_requested += self.service.bit_rate
 
         self.topology.graph['services'].append(self.service)
 
         reward = self.reward()
         info = {
                    'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
-                   'service_blocking_rate_since_reset': (self.services_processed_since_reset - self.services_accepted_since_reset) / self.services_processed_since_reset,
+                   'episode_service_blocking_rate': (self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
                    'bit_rate_blocking_rate': (self.bit_rate_requested - self.bit_rate_provisioned) / self.bit_rate_requested,
-                   'bit_rate_blocking_rate_since_reset': (self.bit_rate_requested_since_reset - self.bit_rate_provisioned_since_reset) / self.bit_rate_requested_since_reset
+                   'episode_bit_rate_blocking_rate': (self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
                }
 
         self._new_service = False
         self._next_service()
-        return self.observation(), reward, self.services_processed_since_reset == self.episode_length, info
+        return self.observation(), reward, self.episode_services_processed == self.episode_length, info
 
     def reset(self, only_counters=True):
-        self.bit_rate_requested_since_reset = 0
-        self.bit_rate_provisioned_since_reset = 0
-        self.services_processed_since_reset = 0
-        self.services_accepted_since_reset = 0
-        self.actions_output_since_reset = np.zeros((self.k_paths + self.reject_action,
-                                                   self.num_spectrum_resources + self.reject_action),
-                                                   dtype=int)
-        self.actions_taken_since_reset = np.zeros((self.k_paths + self.reject_action,
-                                                  self.num_spectrum_resources + self.reject_action),
-                                                  dtype=int)
+        self.episode_bit_rate_requested = 0
+        self.episode_bit_rate_provisioned = 0
+        self.episode_services_processed = 0
+        self.episode_services_accepted = 0
+        self.episode_actions_output = np.zeros((self.k_paths + self.reject_action,
+                                                self.num_spectrum_resources + self.reject_action),
+                                               dtype=int)
+        self.episode_actions_taken = np.zeros((self.k_paths + self.reject_action,
+                                               self.num_spectrum_resources + self.reject_action),
+                                              dtype=int)
 
         if only_counters:
             return self.observation()
@@ -184,9 +184,9 @@ class RMSAEnv(OpticalNetworkEnv):
         self._update_network_stats()
 
         self.services_accepted += 1
-        self.services_accepted_since_reset += 1
+        self.episode_services_accepted += 1
         self.bit_rate_provisioned += self.service.bit_rate
-        self.bit_rate_provisioned_since_reset += self.service.bit_rate
+        self.episode_bit_rate_provisioned += self.service.bit_rate
 
     def _release_path(self, service: Service):
         for i in range(len(service.route.node_list) - 1):
@@ -297,7 +297,7 @@ class RMSAEnv(OpticalNetworkEnv):
                 self._add_release(service_to_release)  # puts service back in the queue
                 break  # breaks the loop
 
-        self.service = Service(self.services_processed_since_reset, src, src_id,
+        self.service = Service(self.episode_services_processed, src, src_id,
                                destination=dst, destination_id=dst_id,
                                arrival_time=at, holding_time=ht, bit_rate=bit_rate)
         self._new_service = True

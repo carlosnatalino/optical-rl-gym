@@ -19,8 +19,8 @@ class OpticalNetworkEnv(gym.Env):
         self.episode_length = episode_length
         self.services_processed = 0
         self.services_accepted = 0
-        self.services_processed_since_reset = 0
-        self.services_accepted_since_reset = 0
+        self.episode_services_processed = 0
+        self.episode_services_accepted = 0
 
         self.current_service = None
         self._new_service = False
@@ -164,8 +164,8 @@ class OpticalNetworkEnv(gym.Env):
         self.current_time = 0
         self.services_processed = 0
         self.services_accepted = 0
-        self.services_processed_since_reset = 0
-        self.services_accepted_since_reset = 0
+        self.episode_services_processed = 0
+        self.episode_services_accepted = 0
 
         self.topology.graph['available_spectrum'] = np.full((self.topology.number_of_edges()),
                                                             fill_value=self.num_spectrum_resources,
