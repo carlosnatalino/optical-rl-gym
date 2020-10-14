@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 load = 50
-logging.getLogger('rmcsaenv').setLevel(logging.DEBUG)
+logging.getLogger('rmsaenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10

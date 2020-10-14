@@ -89,7 +89,7 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, initial_slot, core = action[0], action[1], action[2]
+        path, initial_slot, core = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
         self.actions_output[path, initial_slot] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
@@ -460,7 +460,7 @@ class SimpleMatrixObservation(gym.ObservationWrapper):
     def __init__(self, env: RMCSAEnv):
         super().__init__(env)
         shape = self.env.topology.number_of_nodes() * 2 \
-                + self.env.topology.number_of_edges() * self.env.num_spectrum_resources * self.num_spatial_resources
+                + self.env.topology.number_of_edges() * self.env.num_spectrum_resources * self.env.num_spatial_resources
         self.observation_space = gym.spaces.Box(low=0, high=1, dtype=np.uint8, shape=(shape,))
         self.action_space = env.action_space
 
