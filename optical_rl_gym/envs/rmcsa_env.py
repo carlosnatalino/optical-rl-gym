@@ -35,7 +35,6 @@ class RMCSAEnv(OpticalNetworkEnv):
                          load=load,
                          mean_service_holding_time=mean_service_holding_time,
                          num_spectrum_resources=num_spectrum_resources,
-                         num_spatial_resources=num_spatial_resources,  # changed to include cores
                          node_request_probabilities=node_request_probabilities,
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
