@@ -35,7 +35,6 @@ class RMCSAEnv(OpticalNetworkEnv):
                          load=load,
                          mean_service_holding_time=mean_service_holding_time,
                          num_spectrum_resources=num_spectrum_resources,
-                         num_spatial_resources=num_spatial_resources,  # changed to include cores
                          node_request_probabilities=node_request_probabilities,
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
@@ -148,11 +147,11 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
 
-        self.topology.graph["available_slots"] = np.ones((self.num_spatial_resources, self.topology.number_of_edges(),
-                                                          self.num_spectrum_resources), dtype=int)
+        self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources,
+                                                          self.num_spatial_resources), dtype=int)
 
-        self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
-                                                  self.num_spectrum_resources),
+        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources,
+                                                  self.num_spatial_resources),
                                                  fill_value=-1, dtype=np.int)
 
         self.topology.graph["compactness"] = 0.
