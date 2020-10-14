@@ -50,7 +50,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
 
-        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
+        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources,
+                                                  self.num_spatial_resources),
                                                  fill_value=-1, dtype=np.int)
 
         # do we allow proactive rejection or not?
@@ -88,7 +89,7 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, initial_slot = action[0], action[1]
+        path, initial_slot, core = action[0], action[1], action[2]
         self.actions_output[path, initial_slot] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
@@ -147,11 +148,11 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
 
-        self.topology.graph["available_slots"] = np.ones((self.num_spatial_resources, self.topology.number_of_edges(),
-                                                          self.num_spectrum_resources), dtype=int)
+        self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources,
+                                                          self.num_spatial_resources), dtype=int)
 
-        self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
-                                                  self.num_spectrum_resources),
+        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources,
+                                                  self.num_spatial_resources),
                                                  fill_value=-1, dtype=np.int)
 
         self.topology.graph["compactness"] = 0.
