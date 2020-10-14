@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 load = 50
-logging.getLogger('rmcsaenv').setLevel(logging.DEBUG)
+logging.getLogger('rmsaenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
@@ -30,7 +30,7 @@ env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mea
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
-init_env = gym.make('RMSA-v0', **env_args)
+init_env = gym.make('RMCSA-v0', **env_args)
 env_rnd = SimpleMatrixObservation(init_env)
 mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_eval_episodes=episodes)
 print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
