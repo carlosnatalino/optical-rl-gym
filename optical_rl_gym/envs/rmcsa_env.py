@@ -460,7 +460,7 @@ class SimpleMatrixObservation(gym.ObservationWrapper):
     def __init__(self, env: RMCSAEnv):
         super().__init__(env)
         shape = self.env.topology.number_of_nodes() * 2 \
-                + self.env.topology.number_of_edges() * self.env.num_spectrum_resources
+                + self.env.topology.number_of_edges() * self.env.num_spectrum_resources * self.num_spatial_resources
         self.observation_space = gym.spaces.Box(low=0, high=1, dtype=np.uint8, shape=(shape,))
         self.action_space = env.action_space
 

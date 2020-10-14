@@ -19,3 +19,8 @@ register(
     id='QoSConstrainedRA-v0',
     entry_point='optical_rl_gym.envs:QoSConstrainedRA',
 )
+
+register(
+    id='RMCSA-v0',
+    entry_point='optical_rl_gym.envs:RMCSAEnv',
+)
