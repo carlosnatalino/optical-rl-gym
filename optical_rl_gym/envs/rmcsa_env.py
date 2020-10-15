@@ -341,7 +341,6 @@ class RMCSAEnv(OpticalNetworkEnv):
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
-        # This needs to be changed to accommodate the addition of the core parameter:
         for i in range(len(path.node_list) - 1):
             if np.any(self.topology.graph['available_slots'][
                       core:core + number_slots,
