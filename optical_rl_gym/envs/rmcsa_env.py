@@ -49,11 +49,11 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
 
+        self.num_spatial_resources = num_spatial_resources  # number of cores
+
         self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
                                                   self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
-
-        self.num_spatial_resources = num_spatial_resources  # number of cores
 
         # do we allow proactive rejection or not?
         self.reject_action = 1 if allow_rejection else 0
@@ -75,7 +75,8 @@ class RMCSAEnv(OpticalNetworkEnv):
                                                self.k_paths + 1,
                                                self.num_spectrum_resources + 1),
                                               dtype=int)
-        self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
+        self.action_space = gym.spaces.MultiDiscrete((self.num_spatial_resources + self.reject_action,
+                                                     self.k_paths + self.reject_action,
                                                      self.num_spectrum_resources + self.reject_action))
         self.observation_space = gym.spaces.Dict(
             {'topology': gym.spaces.Discrete(10),
@@ -99,7 +100,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
-            if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],  # ALL IS_PATH_FREE NEEDS CORE HERE
+            if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],  # ALL IS_PATH_FREE NEEDS CORE HERE
                                  initial_slot, slots):
                 self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
                                      initial_slot, slots)
@@ -331,12 +332,19 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, core: int , path: Path, initial_slot: int, number_slots: int) -> bool:
+        """
+        NEW DOC STRING, NOT FINAL
+
+        Method that determines if the path is free for the core, path, and initial_slot.
+        """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
+        # This needs to be changed to accommodate the addition of the core parameter:
         for i in range(len(path.node_list) - 1):
             if np.any(self.topology.graph['available_slots'][
+                      core:core + number_slots,
                       self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                       initial_slot:initial_slot + number_slots] == 0):
                 return False
