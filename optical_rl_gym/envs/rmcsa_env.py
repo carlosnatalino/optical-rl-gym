@@ -38,7 +38,6 @@ class RMCSAEnv(OpticalNetworkEnv):
                          node_request_probabilities=node_request_probabilities,
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
-        self.num_spatial_resources = num_spatial_resources  # number of cores
         assert 'modulations' in self.topology.graph
 
         # specific attributes for elastic optical networks
@@ -53,6 +52,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
                                                   self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
+
+        self.num_spatial_resources = num_spatial_resources  # number of cores
 
         # do we allow proactive rejection or not?
         self.reject_action = 1 if allow_rejection else 0
