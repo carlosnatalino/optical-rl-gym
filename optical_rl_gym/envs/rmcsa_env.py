@@ -22,7 +22,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 num_spatial_resources=3,  # number of cores
+                 num_spatial_resources=3,  # number of cores - 3, 7, 11, 22
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -50,24 +50,28 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
 
-        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources,
-                                                  self.num_spatial_resources),
+        self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
+                                                  self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
         # do we allow proactive rejection or not?
         self.reject_action = 1 if allow_rejection else 0
 
         # defining the observation and action spaces
-        self.actions_output = np.zeros((self.k_paths + 1,
+        self.actions_output = np.zeros((self.num_spatial_resources + 1,
+                                        self.k_paths + 1,
                                        self.num_spectrum_resources + 1),
                                        dtype=int)
-        self.episode_actions_output = np.zeros((self.k_paths + 1,
+        self.episode_actions_output = np.zeros((self.num_spatial_resources + 1,
+                                                self.k_paths + 1,
                                                 self.num_spectrum_resources + 1),
                                                dtype=int)
-        self.actions_taken = np.zeros((self.k_paths + 1,
+        self.actions_taken = np.zeros((self.num_spatial_resources + 1,
+                                       self.k_paths + 1,
                                       self.num_spectrum_resources + 1),
                                       dtype=int)
-        self.episode_actions_taken = np.zeros((self.k_paths + 1,
+        self.episode_actions_taken = np.zeros((self.num_spatial_resources + 1,
+                                               self.k_paths + 1,
                                                self.num_spectrum_resources + 1),
                                               dtype=int)
         self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
@@ -89,12 +93,12 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, initial_slot, core = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
-        self.actions_output[path, initial_slot] += 1
+        core, path, initial_slot = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
+        self.actions_output[core, path, initial_slot] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
-            if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],
+            if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],  # ALL IS_PATH_FREE NEEDS CORE HERE
                                  initial_slot, slots):
                 self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
                                      initial_slot, slots)
@@ -148,11 +152,11 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
 
-        self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources,
-                                                          self.num_spatial_resources), dtype=int)
+        self.topology.graph["available_slots"] = np.ones((self.num_spatial_resources, self.topology.number_of_edges(),
+                                                          self.num_spectrum_resources), dtype=int)
 
-        self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources,
-                                                  self.num_spatial_resources),
+        self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
+                                                  self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
         self.topology.graph["compactness"] = 0.
