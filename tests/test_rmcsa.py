@@ -26,7 +26,7 @@ with open(f'../examples/topologies/nsfnet_chen_eon_5-paths.h5', 'rb') as f:
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
-                episode_length=episode_length, num_spectrum_resources=64)
+                episode_length=episode_length, num_spectrum_resources=64, num_spatial_resources=3)
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
@@ -37,6 +37,7 @@ print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
 print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
 
+#Specific - modify
 env_sp = gym.make('RMCSA-v0', **env_args)
 mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sp, shortest_path_first_fit, n_eval_episodes=episodes)
 print('SP-FF:'.ljust(8), f'{mean_reward_sp:.4f}  {std_reward_sp:<7.4f}')

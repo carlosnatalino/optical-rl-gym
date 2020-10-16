@@ -22,7 +22,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 num_spatial_resources=7,  # number of cores - 3, 7, 11, 22
+                 num_spatial_resources=3,  # number of cores - 3, 7, 11, 22
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -182,9 +182,9 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self.logger.debug('{} assigning path {} on initial slot {} for {} slots'.format(self.service.service_id, path.node_list, initial_slot, number_slots))
         for i in range(len(path.node_list) - 1):
-            self.topology.graph['available_slots'][core:core + number_slots, self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
+            self.topology.graph['available_slots'][core, self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                                                                         initial_slot:initial_slot + number_slots] = 0
-            self.spectrum_slots_allocation[self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
+            self.spectrum_slots_allocation[core, self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                                                     initial_slot:initial_slot + number_slots] = self.service.service_id
             self.topology[path.node_list[i]][path.node_list[i + 1]]['services'].append(self.service)
             self.topology[path.node_list[i]][path.node_list[i + 1]]['running_services'].append(self.service)
@@ -214,6 +214,7 @@ class RMCSAEnv(OpticalNetworkEnv):
     def _update_network_stats(self):
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
+        """
         if self.current_time > 0:
             last_throughput = self.topology.graph['throughput']
             last_compactness = self.topology.graph['compactness']
@@ -229,12 +230,13 @@ class RMCSAEnv(OpticalNetworkEnv):
             compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
                               self.current_time
             self.topology.graph['compactness'] = compactness
-
+        """
         self.topology.graph['last_update'] = self.current_time
 
     def _update_link_stats(self, node1: str, node2: str):
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
+        """
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
             cur_util = (self.num_spectrum_resources - np.sum(
@@ -286,6 +288,7 @@ class RMCSAEnv(OpticalNetworkEnv):
 
             link_compactness = ((last_compactness * last_update) + (cur_link_compactness * time_diff)) / self.current_time
             self.topology[node1][node2]['compactness'] = link_compactness
+        """
 
         self.topology[node1][node2]['last_update'] = self.current_time
 
@@ -343,7 +346,7 @@ class RMCSAEnv(OpticalNetworkEnv):
             return False
         for i in range(len(path.node_list) - 1):
             if np.any(self.topology.graph['available_slots'][
-                      core:core + number_slots,
+                      core,
                       self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                       initial_slot:initial_slot + number_slots] == 0):
                 return False
