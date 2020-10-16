@@ -22,7 +22,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 num_spatial_resources=3,  # number of cores - 3, 7, 11, 22
+                 num_spatial_resources=7,  # number of cores - 3, 7, 11, 22
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -102,7 +102,7 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],  # ALL IS_PATH_FREE NEEDS CORE HERE
                                  initial_slot, slots):
-                self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
+                self._provision_path(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
                                      initial_slot, slots)
                 self.service.accepted = True
                 self.actions_taken[path, initial_slot] += 1
@@ -174,15 +174,15 @@ class RMCSAEnv(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, path: Path, initial_slot, number_slots):
+    def _provision_path(self, core: int, path: Path, initial_slot, number_slots):
         # usage
-        if not self.is_path_free(path, initial_slot, number_slots):
+        if not self.is_path_free(core, path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
                                                                                      initial_slot + number_slots))
 
         self.logger.debug('{} assigning path {} on initial slot {} for {} slots'.format(self.service.service_id, path.node_list, initial_slot, number_slots))
         for i in range(len(path.node_list) - 1):
-            self.topology.graph['available_slots'][self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
+            self.topology.graph['available_slots'][core:core + number_slots, self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                                                                         initial_slot:initial_slot + number_slots] = 0
             self.spectrum_slots_allocation[self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                                                     initial_slot:initial_slot + number_slots] = self.service.service_id
@@ -332,7 +332,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, core: int , path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, core: int, path: Path, initial_slot: int, number_slots: int) -> bool:
         """
         NEW DOC STRING, NOT FINAL
 
