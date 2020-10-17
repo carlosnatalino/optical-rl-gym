@@ -1,5 +1,3 @@
-import json
-
 
 def topology_to_json(file):
     data = {
@@ -48,11 +46,3 @@ def topology_to_json(file):
                 data["connections"].append({"from_node": f"Fiber ({begin} \u2192 {end})",
                                            "to_node": end})
     return data
-
-
-if __name__ == "__main__":
-    filename = "./topologies/nsfnet_chen.txt"
-    output = topology_to_json(filename)
-    with open('mock_network.json', 'w') as outfile:
-        json.dump(output, outfile, indent=1, separators=(',', ': '))
-        print("Dumped.")
