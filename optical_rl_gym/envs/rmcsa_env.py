@@ -105,7 +105,7 @@ class RMCSAEnv(OpticalNetworkEnv):
                 self._provision_path(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
                                      initial_slot, slots)
                 self.service.accepted = True
-                self.actions_taken[path, initial_slot] += 1
+                self.actions_taken[core, path, initial_slot] += 1
                 self._add_release(self.service)
             else:
                 self.service.accepted = False
@@ -113,7 +113,7 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.service.accepted = False
 
         if not self.service.accepted:
-            self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
+            self.actions_taken[self.num_spatial_resources, self.k_paths, self.num_spectrum_resources] += 1
 
         self.services_processed += 1
         self.episode_services_processed += 1
@@ -237,6 +237,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
         """
+        Heuristic stats. Not mandatory for functionality of simulator.
+        
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
             cur_util = (self.num_spectrum_resources - np.sum(
