@@ -100,7 +100,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
-            if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],  # ALL IS_PATH_FREE NEEDS CORE HERE
+            if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
                                  initial_slot, slots):
                 self._provision_path(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
                                      initial_slot, slots)
