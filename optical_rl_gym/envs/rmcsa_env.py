@@ -97,7 +97,7 @@ class RMCSAEnv(OpticalNetworkEnv):
     def step(self, action: [int]):
         core, path, initial_slot = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
         self.actions_output[core, path, initial_slot] += 1
-        if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
+        if core < self.num_spatial_resources and path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
