@@ -193,6 +193,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.service.route = path
         self.service.initial_slot = initial_slot
         self.service.number_slots = number_slots
+        self.service.core = core
         self._update_network_stats()
 
         self.services_accepted += 1
@@ -202,10 +203,11 @@ class RMCSAEnv(OpticalNetworkEnv):
 
     def _release_path(self, service: Service):
         for i in range(len(service.route.node_list) - 1):
-            self.topology.graph['available_slots'][
+            self.topology.graph['available_slots'][service.core,
                 self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
                                             service.initial_slot:service.initial_slot + service.number_slots] = 1
-            self.spectrum_slots_allocation[self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
+            self.spectrum_slots_allocation[service.core,
+                    self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
                                             service.initial_slot:service.initial_slot + service.number_slots] = -1
             self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['running_services'].remove(service)
             self._update_link_stats(service.route.node_list[i], service.route.node_list[i + 1])
