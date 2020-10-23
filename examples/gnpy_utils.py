@@ -1,17 +1,12 @@
-import json
 from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
 from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.network import build_network
-from gnpy.tools.json_io import load_network, load_equipment, network_from_json
+from gnpy.tools.json_io import load_equipment, network_from_json
 from pathlib import Path
 from networkx import dijkstra_path
-from numpy import mean, sqrt, ones
+from numpy import mean
 from random import randint
-
-# network_file_name = Path(__file__).parent / 'tests/LinkforTest.json'
-# network_file_name = Path(__file__).parent / 'mock_network.json'
-eqpt_library_name = Path(__file__).parent / 'tests/data/eqpt_config.json'
 
 
 def topology_to_json(file):
@@ -30,8 +25,8 @@ def topology_to_json(file):
                                                  "location": {
                                                     "city": "",
                                                     "region": "",
-                                                    "latitude": randint(1, 100),
-                                                    "longitude": randint(1, 100)
+                                                    "latitude": randint(0, 100),
+                                                    "longitude": randint(0, 100)
                                                  }
                                              },
                                              "type": "Transceiver"})
@@ -43,8 +38,8 @@ def topology_to_json(file):
                                          # dummy data that works with GNPy's test eqpt_config.json
                                          "metadata": {
                                              "location": {
-                                                 "latitude": randint(1, 100),
-                                                 "longitude": randint(1, 100)
+                                                 "latitude": randint(0, 100),
+                                                 "longitude": randint(0, 100)
                                                 }
                                              },
                                          "type": "Fiber",
@@ -60,14 +55,14 @@ def topology_to_json(file):
                                            "to_node": f"Fiber ({begin} \u2192 {end})"})
                 data["connections"].append({"from_node": f"Fiber ({begin} \u2192 {end})",
                                            "to_node": end})
+
     return data
 
 
-def propagation(input_power, con_in, con_out, source, dest):
-    equipment = load_equipment(eqpt_library_name)
-    json_data = topology_to_json('./topologies/nsfnet_chen.txt')
+def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
+    equipment = load_equipment(eqpt)
+    json_data = topology_to_json(topology)
     network = network_from_json(json_data, equipment)
-    # network = load_network(network_file_name, equipment)
     build_network(network, equipment, 0, 20)
 
     # parametrize the network elements with the con losses and adapt gain
@@ -84,35 +79,30 @@ def propagation(input_power, con_in, con_out, source, dest):
 
     p = input_power
     p = db2lin(p) * 1e-3
+    # values from GNPy test_propagation.py
     spacing = 50e9  # THz
     si = create_input_spectral_information(191.3e12, 191.3e12 + 79 * spacing, 0.15, 32e9, p, spacing)
-    source = next(transceivers[uid] for uid in transceivers if uid == source)
+
+    source_node = next(transceivers[uid] for uid in transceivers if uid == source)
     sink = next(transceivers[uid] for uid in transceivers if uid == dest)
-    path = dijkstra_path(network, source, sink)
+    path = dijkstra_path(network, source_node, sink)
     for el in path:
         si = el(si)
-        print(el)
-        # print(el.uid) if isinstance(el, Transceiver) else None  # remove this line when sweeping across several powers
 
     print(f'pw: {input_power} conn in: {con_in} con out: {con_out}',
           f'OSNR@0.1nm: {round(mean(sink.osnr_ase_01nm),2)}',
           f'SNR@bandwitdth: {round(mean(sink.snr),2)}')
 
-    return sink
+    return sink.snr
 
 
 if __name__ == "__main__":
-    # filename = './topologies/nsfnet_chen.txt'
-    # json_data = topology_to_json(filename)
-    #
-    # with open('mock_network.json', 'w') as f:
-    #     output = json.dumps(json_data, indent=2, separators=(',', ': '))
-    #     f.write(output)
-    #     print('Dumped.')
-
+    filename = './topologies/nsfnet_chen.txt'
+    eqpt_library_name = Path(__file__).parent / 'tests/data/eqpt_config.json'
     pw = 2
     conn_in = 1
     conn_out = 1
     source = 1
-    dest = 13
-    propagation(pw, conn_in, conn_out, source, dest)
+    dest = 2
+
+    propagation(pw, conn_in, conn_out, source, dest, filename, eqpt_library_name)
