@@ -216,10 +216,11 @@ class RMCSAEnv(OpticalNetworkEnv):
     def _update_network_stats(self):
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
-        """
+
         if self.current_time > 0:
             last_throughput = self.topology.graph['throughput']
-            last_compactness = self.topology.graph['compactness']
+
+            # last_compactness = self.topology.graph['compactness']
 
             cur_throughput = 0.
 
@@ -229,10 +230,10 @@ class RMCSAEnv(OpticalNetworkEnv):
             throughput = ((last_throughput * last_update) + (cur_throughput * time_diff)) / self.current_time
             self.topology.graph['throughput'] = throughput
 
-            compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
-                              self.current_time
-            self.topology.graph['compactness'] = compactness
-        """
+            # compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
+            #                  self.current_time
+            # self.topology.graph['compactness'] = compactness
+
         self.topology.graph['last_update'] = self.current_time
 
     def _update_link_stats(self, node1: str, node2: str):
@@ -453,9 +454,11 @@ def shortest_path_first_fit(env: RMCSAEnv) -> int:
 def shortest_available_path_first_fit(env: RMCSAEnv) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
+        # Loop for core
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
             if env.is_path_free(path, initial_slot, num_slots):
                 return [idp, initial_slot]
+            # Add core to return?
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
