@@ -10,7 +10,7 @@ class DeepRMSAEnv(RMSAEnv):
     def __init__(self, topology=None, j=1,
                  episode_length=1000,
                  mean_service_holding_time=25.0,
-                 mean_service_inter_arrival_time=10.,
+                 mean_service_inter_arrival_time=.1,
                  num_spectrum_resources=100,
                  node_request_probabilities=None,
                  seed=None,
