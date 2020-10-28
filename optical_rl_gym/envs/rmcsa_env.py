@@ -459,7 +459,7 @@ def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
                 if env.is_path_free(core, path, initial_slot, num_slots):
                     return [core, idp, initial_slot]
             # Add core to return?
-    return [env.num_spatial_resources],[env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+    return [env.num_spatial_resources, env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
 def least_loaded_path_first_fit(env: RMCSAEnv) -> int:
