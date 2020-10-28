@@ -97,8 +97,8 @@ def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
 
 
 if __name__ == "__main__":
-    filename = './topologies/nsfnet_chen.txt'
-    eqpt_library_name = Path(__file__).parent / 'tests/data/eqpt_config.json'
+    filename = '../examples/topologies/nsfnet_chen.txt'
+    eqpt_library_name = Path(__file__).parent / '../examples/tests/data/eqpt_config.json'
     pw = 2
     conn_in = 1
     conn_out = 1
