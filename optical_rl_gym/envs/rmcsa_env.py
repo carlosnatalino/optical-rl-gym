@@ -95,9 +95,9 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        core, path, initial_slot = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
+        core, path, initial_slot = action[0], action[1], action[2]
         self.actions_output[core, path, initial_slot] += 1
-        if core < self.num_spatial_resources and path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
+        if core < self.num_spatial_resources and path < self.k_paths and initial_slot < self.num_spectrum_resources:
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
@@ -454,13 +454,12 @@ def shortest_path_first_fit(env: RMCSAEnv) -> int:
 def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
-        # Loop for core
         for core in range(env.num_spatial_resources):
             for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
                 if env.is_path_free(core, path, initial_slot, num_slots):
                     return [core, idp, initial_slot]
-                # Add core to return?
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+            # Add core to return?
+    return [env.num_spatial_resources, env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
 def least_loaded_path_first_fit(env: RMCSAEnv) -> int:
