@@ -7,34 +7,31 @@ from pathlib import Path
 from networkx import dijkstra_path
 from numpy import mean
 from random import randint
+from pickle import load
 
 
 def topology_to_json(file):
+    """ Currently loads a NetworkX topology from file and transforms it into GNPy JSON """
     data = {
         "elements": [],
         "connections": []
     }
-    with open(file, 'r') as f:
-        lines = [line for line in f if not line.startswith('#')]
-        for line_num, line in enumerate(lines):
-            if line_num == 0:
-                num_nodes = int(line)
-                for i in range(1, num_nodes + 1):
-                    data["elements"].append({"uid": i,
-                                             "metadata": {
-                                                 "location": {
-                                                    "city": "",
-                                                    "region": "",
-                                                    "latitude": randint(0, 100),
-                                                    "longitude": randint(0, 100)
-                                                 }
-                                             },
-                                             "type": "Transceiver"})
-            elif line_num == 1:
-                pass
-            else:
-                begin, end, length = [int(part) for part in line.split()]
-                data["elements"].append({"uid": f"Fiber ({begin} \u2192 {end})",
+    with open(file, 'rb') as f:
+        topology = load(f)
+        for i in topology.nodes:
+            data["elements"].append({"uid": i,
+                                     "metadata": {
+                                         "location": {
+                                            "city": "",
+                                            "region": "",
+                                            "latitude": randint(0, 100),
+                                            "longitude": randint(0, 100)
+                                         }
+                                     },
+                                     "type": "Transceiver"})
+        for node in topology.adj:
+            for connected_node in topology.adj[node]:
+                data["elements"].append({"uid": f"Fiber ({node} \u2192 {connected_node})",
                                          # dummy data that works with GNPy's test eqpt_config.json
                                          "metadata": {
                                              "location": {
@@ -45,21 +42,22 @@ def topology_to_json(file):
                                          "type": "Fiber",
                                          "type_variety": "SSMF",
                                          "params": {
-                                             "length": length,
+                                             "length": topology.adj[node][connected_node]['length'],
                                              "length_units": "km",
                                              "loss_coef": 0.2,
                                              "con_in": 1.00,
                                              "con_out": 1.00
                                          }})
-                data["connections"].append({"from_node": begin,
-                                           "to_node": f"Fiber ({begin} \u2192 {end})"})
-                data["connections"].append({"from_node": f"Fiber ({begin} \u2192 {end})",
-                                           "to_node": end})
+                data["connections"].append({"from_node": node,
+                                           "to_node": f"Fiber ({node} \u2192 {connected_node})"})
+                data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
+                                           "to_node": connected_node})
 
     return data
 
 
 def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
+    """ Create network topology from JSON and outputs SNR based on inputs """
     equipment = load_equipment(eqpt)
     json_data = topology_to_json(topology)
     network = network_from_json(json_data, equipment)
@@ -97,12 +95,12 @@ def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
 
 
 if __name__ == "__main__":
-    filename = '../examples/topologies/nsfnet_chen.txt'
+    filename = '../examples/topologies/nsfnet_chen_eon_5-paths.h5'
     eqpt_library_name = Path(__file__).parent / '../examples/tests/data/eqpt_config.json'
     pw = 2
     conn_in = 1
     conn_out = 1
-    source = 1
-    dest = 2
+    source = '14'
+    dest = '1'
 
     propagation(pw, conn_in, conn_out, source, dest, filename, eqpt_library_name)
