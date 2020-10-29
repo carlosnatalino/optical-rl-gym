@@ -3,55 +3,52 @@ from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.network import build_network
 from gnpy.tools.json_io import load_equipment, network_from_json
-from pathlib import Path
 from networkx import dijkstra_path
 from numpy import mean
 from random import randint
-from pickle import load
 
 
-def topology_to_json(file):
+def topology_to_json(topology):
     """ Currently loads a NetworkX topology from file and transforms it into GNPy JSON """
     data = {
         "elements": [],
         "connections": []
     }
-    with open(file, 'rb') as f:
-        topology = load(f)
-        for i in topology.nodes:
-            data["elements"].append({"uid": i,
+
+    for i in topology.nodes:
+        data["elements"].append({"uid": i,
+                                 "metadata": {
+                                     "location": {
+                                        "city": "",
+                                        "region": "",
+                                        "latitude": randint(0, 100),
+                                        "longitude": randint(0, 100)
+                                     }
+                                 },
+                                 "type": "Transceiver"})
+    for node in topology.adj:
+        for connected_node in topology.adj[node]:
+            data["elements"].append({"uid": f"Fiber ({node} \u2192 {connected_node})",
+                                     # dummy data that works with GNPy's test eqpt_config.json
                                      "metadata": {
                                          "location": {
-                                            "city": "",
-                                            "region": "",
-                                            "latitude": randint(0, 100),
-                                            "longitude": randint(0, 100)
-                                         }
-                                     },
-                                     "type": "Transceiver"})
-        for node in topology.adj:
-            for connected_node in topology.adj[node]:
-                data["elements"].append({"uid": f"Fiber ({node} \u2192 {connected_node})",
-                                         # dummy data that works with GNPy's test eqpt_config.json
-                                         "metadata": {
-                                             "location": {
-                                                 "latitude": randint(0, 100),
-                                                 "longitude": randint(0, 100)
-                                                }
-                                             },
-                                         "type": "Fiber",
-                                         "type_variety": "SSMF",
-                                         "params": {
-                                             "length": topology.adj[node][connected_node]['length'],
-                                             "length_units": "km",
-                                             "loss_coef": 0.2,
-                                             "con_in": 1.00,
-                                             "con_out": 1.00
-                                         }})
-                data["connections"].append({"from_node": node,
-                                           "to_node": f"Fiber ({node} \u2192 {connected_node})"})
-                data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
-                                           "to_node": connected_node})
+                                             "latitude": randint(0, 100),
+                                             "longitude": randint(0, 100)
+                                            }
+                                         },
+                                     "type": "Fiber",
+                                     "type_variety": "SSMF",
+                                     "params": {
+                                         "length": topology.adj[node][connected_node]['length'],
+                                         "length_units": "km",
+                                         "loss_coef": 0.2,
+                                         "con_in": 1.00,
+                                         "con_out": 1.00
+                                     }})
+            data["connections"].append({"from_node": node,
+                                       "to_node": f"Fiber ({node} \u2192 {connected_node})"})
+            data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
+                                       "to_node": connected_node})
 
     return data
 
@@ -87,20 +84,8 @@ def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
     for el in path:
         si = el(si)
 
-    print(f'pw: {input_power} conn in: {con_in} con out: {con_out}',
-          f'OSNR@0.1nm: {round(mean(sink.osnr_ase_01nm),2)}',
-          f'SNR@bandwitdth: {round(mean(sink.snr),2)}')
+    # print(f'pw: {input_power} conn in: {con_in} con out: {con_out}',
+    #       f'OSNR@0.1nm: {round(mean(sink.osnr_ase_01nm),2)}',
+    #       f'SNR@bandwitdth: {round(mean(sink.snr),2)}')
 
     return sink.snr
-
-
-if __name__ == "__main__":
-    filename = '../examples/topologies/nsfnet_chen_eon_5-paths.h5'
-    eqpt_library_name = Path(__file__).parent / '../examples/tests/data/eqpt_config.json'
-    pw = 2
-    conn_in = 1
-    conn_out = 1
-    source = '14'
-    dest = '1'
-
-    propagation(pw, conn_in, conn_out, source, dest, filename, eqpt_library_name)
