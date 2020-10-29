@@ -11,7 +11,7 @@ from .optical_network_env import OpticalNetworkEnv
 from optical_rl_gym.gnpy_utils import propagation
 
 
-class RMSAComplex(OpticalNetworkEnv):
+class PowerAwareRMSA(OpticalNetworkEnv):
 
     metadata = {
         'metrics': ['service_blocking_rate', 'episode_service_blocking_rate',
@@ -241,7 +241,7 @@ class RMSAComplex(OpticalNetworkEnv):
             cur_external_fragmentation = 0.
             cur_link_compactness = 0.
             if np.sum(slot_allocation) > 0:
-                initial_indices, values, lengths = RMSAComplex.rle(slot_allocation)
+                initial_indices, values, lengths = PowerAwareRMSA.rle(slot_allocation)
 
                 # computing external fragmentation from https://ieeexplore.ieee.org/abstract/document/6421472
                 unused_blocks = [i for i, x in enumerate(values) if x == 1]
@@ -258,7 +258,7 @@ class RMSAComplex(OpticalNetworkEnv):
                     lambda_max = initial_indices[used_blocks[-1]] + lengths[used_blocks[-1]]
 
                     # evaluate again only the "used part" of the spectrum
-                    internal_idx, internal_values, internal_lengths = RMSAComplex.rle(
+                    internal_idx, internal_values, internal_lengths = PowerAwareRMSA.rle(
                         slot_allocation[lambda_min:lambda_max])
                     unused_spectrum_slots = np.sum(1 - internal_values)
 
@@ -365,7 +365,7 @@ class RMSAComplex(OpticalNetworkEnv):
         slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
 
         # getting the blocks
-        initial_indices, values, lengths = RMSAComplex.rle(available_slots)
+        initial_indices, values, lengths = PowerAwareRMSA.rle(available_slots)
 
         # selecting the indices where the block is available, i.e., equals to one
         available_indices = np.where(values == 1)
@@ -397,7 +397,7 @@ class RMSAComplex(OpticalNetworkEnv):
         for n1, n2 in self.topology.edges():
             # getting the blocks
             initial_indices, values, lengths = \
-                RMSAComplex.rle(self.topology.graph['available_slots'][self.topology[n1][n2]['index'], :])
+                PowerAwareRMSA.rle(self.topology.graph['available_slots'][self.topology[n1][n2]['index'], :])
             used_blocks = [i for i, x in enumerate(values) if x == 0]
             if len(used_blocks) > 1:
                 lambda_min = initial_indices[used_blocks[0]]
@@ -405,7 +405,7 @@ class RMSAComplex(OpticalNetworkEnv):
                 sum_occupied += lambda_max - lambda_min  # we do not put the "+1" because we use zero-indexed arrays
 
                 # evaluate again only the "used part" of the spectrum
-                internal_idx, internal_values, internal_lengths = RMSAComplex.rle(
+                internal_idx, internal_values, internal_lengths = PowerAwareRMSA.rle(
                     self.topology.graph['available_slots'][self.topology[n1][n2]['index'], lambda_min:lambda_max])
                 sum_unused_spectrum_blocks += np.sum(internal_values)
 
@@ -418,7 +418,7 @@ class RMSAComplex(OpticalNetworkEnv):
         return cur_spectrum_compactness
 
 
-def shortest_path_first_fit(env: RMSAComplex) -> int:
+def shortest_path_first_fit(env: PowerAwareRMSA) -> int:
     num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
         if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot, num_slots):
@@ -426,7 +426,7 @@ def shortest_path_first_fit(env: RMSAComplex) -> int:
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
-def shortest_available_path_first_fit(env: RMSAComplex) -> int:
+def shortest_available_path_first_fit(env: PowerAwareRMSA) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
@@ -435,7 +435,7 @@ def shortest_available_path_first_fit(env: RMSAComplex) -> int:
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
-def least_loaded_path_first_fit(env: RMSAComplex) -> int:
+def least_loaded_path_first_fit(env: PowerAwareRMSA) -> int:
     max_free_slots = 0
     action = [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
@@ -452,7 +452,7 @@ def least_loaded_path_first_fit(env: RMSAComplex) -> int:
 
 class SimpleMatrixObservation(gym.ObservationWrapper):
 
-    def __init__(self, env: RMSAComplex):
+    def __init__(self, env: PowerAwareRMSA):
         super().__init__(env)
         shape = self.env.topology.number_of_nodes() * 2 \
                 + self.env.topology.number_of_edges() * self.env.num_spectrum_resources
@@ -473,7 +473,7 @@ class SimpleMatrixObservation(gym.ObservationWrapper):
 
 class PathOnlyFirstFitAction(gym.ActionWrapper):
 
-    def __init__(self, env: RMSAComplex):
+    def __init__(self, env: PowerAwareRMSA):
         super().__init__(env)
         self.action_space = gym.spaces.Discrete(self.env.k_paths + self.env.reject_action)
         self.observation_space = env.observation_space

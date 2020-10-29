@@ -21,6 +21,6 @@ register(
 )
 
 register(
-    id='RMSAComplex-v0',
-    entry_point='optical_rl_gym.envs:RMSAComplex',
+    id='PowerAwareRMSA-v0',
+    entry_point='optical_rl_gym.envs:PowerAwareRMSA',
 )
