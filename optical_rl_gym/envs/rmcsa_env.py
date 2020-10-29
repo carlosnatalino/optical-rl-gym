@@ -451,14 +451,15 @@ def shortest_path_first_fit(env: RMCSAEnv) -> int:
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
-def shortest_available_path_first_fit(env: RMCSAEnv) -> int:
+def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         # Loop for core
-        for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
-            if env.is_path_free(path, initial_slot, num_slots):
-                return [idp, initial_slot]
-            # Add core to return?
+        for core in range(env.num_spatial_resources):
+            for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
+                if env.is_path_free(core, path, initial_slot, num_slots):
+                    return [core, idp, initial_slot]
+                # Add core to return?
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
