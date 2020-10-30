@@ -12,7 +12,7 @@ from optical_rl_gym.gnpy_utils import propagation
 
 
 class PowerAwareRMSA(OpticalNetworkEnv):
-
+    eqpt_library = '../examples/tests/data/eqpt_config.json'
     metadata = {
         'metrics': ['service_blocking_rate', 'episode_service_blocking_rate',
                     'bit_rate_blocking_rate', 'episode_bit_rate_blocking_rate']
@@ -23,6 +23,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
+                 launch_power=15,
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -48,6 +49,8 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
 
+        self.launch_power = launch_power
+
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
@@ -56,19 +59,24 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         # defining the observation and action spaces
         self.actions_output = np.zeros((self.k_paths + 1,
-                                       self.num_spectrum_resources + 1),
+                                        self.num_spectrum_resources + 1,
+                                        self.launch_power + 1),
                                        dtype=int)
         self.episode_actions_output = np.zeros((self.k_paths + 1,
-                                                self.num_spectrum_resources + 1),
+                                                self.num_spectrum_resources + 1,
+                                                self.launch_power + 1),
                                                dtype=int)
         self.actions_taken = np.zeros((self.k_paths + 1,
-                                      self.num_spectrum_resources + 1),
+                                      self.num_spectrum_resources + 1,
+                                       self.launch_power + 1),
                                       dtype=int)
         self.episode_actions_taken = np.zeros((self.k_paths + 1,
-                                               self.num_spectrum_resources + 1),
+                                               self.num_spectrum_resources + 1,
+                                               self.launch_power + 1),
                                               dtype=int)
         self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
-                                                     self.num_spectrum_resources + self.reject_action))
+                                                     self.num_spectrum_resources + self.reject_action,
+                                                      self.launch_power + self.reject_action))
         self.observation_space = gym.spaces.Dict(
             {'topology': gym.spaces.Discrete(10),
              'current_service': gym.spaces.Discrete(10)}
@@ -86,17 +94,17 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, initial_slot = action[0], action[1]
-        self.actions_output[path, initial_slot] += 1
+        path, initial_slot, launch_power = action[0], action[1], action[2]
+        self.actions_output[path, initial_slot, launch_power] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],
-                                 initial_slot, slots):
+                                 initial_slot, slots, launch_power):
                 self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
-                                     initial_slot, slots)
+                                     initial_slot, slots, launch_power)
                 self.service.accepted = True
-                self.actions_taken[path, initial_slot] += 1
+                self.actions_taken[path, initial_slot, launch_power] += 1
                 self._add_release(self.service)
             else:
                 self.service.accepted = False
@@ -163,9 +171,9 @@ class PowerAwareRMSA(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, path: Path, initial_slot, number_slots):
+    def _provision_path(self, path: Path, initial_slot, number_slots, launch_power):
         # usage
-        if not self.is_path_free(path, initial_slot, number_slots):
+        if not self.is_path_free(path, initial_slot, number_slots, launch_power):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
                                                                                      initial_slot + number_slots))
 
@@ -321,7 +329,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, path: Path, initial_slot: int, number_slots: int, launch_power: int) -> bool:
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
@@ -330,6 +338,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                       self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                       initial_slot:initial_slot + number_slots] == 0):
                 return False
+        if np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
+                               self.topology, self.eqpt_library)) < 10:
+
+            return False
+
         return True
 
     def get_available_slots(self, path: Path):
