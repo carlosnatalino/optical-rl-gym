@@ -16,6 +16,7 @@ Please use the following bibtex:
   location = {Bari, Italy},
   month = {July},
   pages = {Mo.C1.1},
+  doi = {10.1109/ICTON51198.2020.9203239},
   url = {https://github.com/carlosnatalino/optical-rl-gym}
 }
 ```

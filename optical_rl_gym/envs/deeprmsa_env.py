@@ -10,7 +10,7 @@ class DeepRMSAEnv(RMSAEnv):
     def __init__(self, topology=None, j=1,
                  episode_length=1000,
                  mean_service_holding_time=25.0,
-                 mean_service_inter_arrival_time=10.,
+                 mean_service_inter_arrival_time=.1,
                  num_spectrum_resources=100,
                  node_request_probabilities=None,
                  seed=None,
@@ -18,7 +18,7 @@ class DeepRMSAEnv(RMSAEnv):
                  allow_rejection=False):
         super().__init__(topology=topology,
                          episode_length=episode_length,
-                         load=mean_service_holding_time * mean_service_inter_arrival_time,
+                         load=mean_service_holding_time / mean_service_inter_arrival_time,
                          mean_service_holding_time=mean_service_holding_time,
                          num_spectrum_resources=num_spectrum_resources,
                          node_request_probabilities=node_request_probabilities,
