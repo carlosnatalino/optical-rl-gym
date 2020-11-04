@@ -458,7 +458,6 @@ def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
             for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
                 if env.is_path_free(core, path, initial_slot, num_slots):
                     return [core, idp, initial_slot]
-            # Add core to return?
     return [env.num_spatial_resources, env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
