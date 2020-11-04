@@ -14,7 +14,7 @@ logging.getLogger('rmsaenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
-episode_length = 10
+episode_length = 1000
 num_spatial_resources = 3
 
 monitor_files = []
@@ -39,14 +39,6 @@ env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mea
 # print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
 # print(init_env.topology.graph['throughput'])
 
-<<<<<<< HEAD
-env_sapfcff = gym.make('RMCSA-v0', **env_args)
-mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sapfcff, shortest_available_first_core_first_fit, n_eval_episodes=episodes)
-print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
-print('Bit rate blocking:', (env_sapfcff.episode_bit_rate_requested - env_sapfcff.episode_bit_rate_provisioned) / env_sapfcff.episode_bit_rate_requested)
-print('Request blocking:', (env_sapfcff.episode_services_processed - env_sapfcff.episode_services_accepted) / env_sapfcff.episode_services_processed)
-print(env_sapfcff.topology.graph['throughput'])
-=======
 # init_env = gym.make('RMCSA-v0', **env_args)
 # env_rnd = SimpleMatrixObservation(init_env)
 # mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_eval_episodes=episodes)
@@ -61,7 +53,6 @@ print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
 print('Bit rate blocking:', (env_sap.episode_bit_rate_requested - env_sap.episode_bit_rate_provisioned) / env_sap.episode_bit_rate_requested)
 print('Request blocking:', (env_sap.episode_services_processed - env_sap.episode_services_accepted) / env_sap.episode_services_processed)
 print(env_sap.topology.graph['throughput'])
->>>>>>> 42cb89c30a1b91612b320a29b14e7df1f701dc3e
 
 """
 #Specific - modify
