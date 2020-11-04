@@ -342,9 +342,17 @@ class RMCSAEnv(OpticalNetworkEnv):
 
     def is_path_free(self, core: int, path: Path, initial_slot: int, number_slots: int) -> bool:
         """
-        NEW DOC STRING, NOT FINAL
-
         Method that determines if the path is free for the core, path, and initial_slot.
+
+        Parameters
+        ----------
+
+        core : int number of cores
+
+        Returns
+        -------
+
+        return: True/False
         """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
@@ -452,8 +460,20 @@ def shortest_path_first_fit(env: RMCSAEnv) -> int:
 
 
 def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
+    """
+    Algorithm for determining the shortest available first core first fit path
+
+    Parameters
+    ----------
+    env : OpenAI Gym object containing RMCSA environment
+
+    Returns
+    -------
+    :return: Cores, paths, and number of spectrum resources
+    """
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
+        # Iteration of core
         for core in range(env.num_spatial_resources):
             for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
                 if env.is_path_free(core, path, initial_slot, num_slots):
