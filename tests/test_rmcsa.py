@@ -9,7 +9,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-load = 50
+load = 250
 logging.getLogger('rmsaenv').setLevel(logging.INFO)
 
 seed = 20
@@ -36,7 +36,14 @@ mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_e
 print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
 print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
-print(init_env.topology.graph['throughput'])
+
+print('Throughput:', init_env.topology.graph['throughput'])
+print('Compactness:', init_env.topology.graph['compactness'])
+print('Resource Utilization:', np.mean(init_env.utilization))
+for key, value in init_env.core_utilization.items():
+    print('Utilization per core ({}): {}'.format(key, np.mean(init_env.core_utilization[key])))
+
+#print(init_env.topology['utilization'])
 
 """
 #Specific - modify
