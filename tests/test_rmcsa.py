@@ -41,10 +41,13 @@ env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mea
 
 env_sap = gym.make('RMCSA-v0', **env_args)
 mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sap, shortest_available_first_core_first_fit, n_eval_episodes=episodes)
+
+# Initial Metrics for Environment
 print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
 print('Bit rate blocking:', (env_sap.episode_bit_rate_requested - env_sap.episode_bit_rate_provisioned) / env_sap.episode_bit_rate_requested)
 print('Request blocking:', (env_sap.episode_services_processed - env_sap.episode_services_accepted) / env_sap.episode_services_processed)
 
+# Additional Metrics For Environment
 print('Throughput:', env_sap.topology.graph['throughput'])
 print('Compactness:', env_sap.topology.graph['compactness'])
 print('Resource Utilization:', np.mean(env_sap.utilization))
