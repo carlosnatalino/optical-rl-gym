@@ -219,14 +219,16 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.topology.graph['running_services'].remove(service)
 
     def _update_network_stats(self, core):
-        last_update = self.topology.graph['last_update']
-        time_diff = self.current_time - last_update
         """
         Update network stats is used to create metrics for "throughput" & "compactness".
 
-        Parameters: 
-        core (int number of cores)
-        """
+        Parameters
+        ----------
+        core: int number of cores
+
+        Returns nothing """
+        last_update = self.topology.graph['last_update']
+        time_diff = self.current_time - last_update
         if self.current_time > 0:
             last_throughput = self.topology.graph['throughput']
 
@@ -250,10 +252,12 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         """ Creates metrics for:
         Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
+
         Parameters
         ----------
         core : int number of cores,
-        node1, node2 : str number of the node within the node_list,
+        node1, node2 : str number of the node within the node_list
+
         Returns nothing """
 
         last_update = self.topology[node1][node2]['last_update']
