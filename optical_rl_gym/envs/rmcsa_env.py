@@ -221,7 +221,12 @@ class RMCSAEnv(OpticalNetworkEnv):
     def _update_network_stats(self, core):
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
+        """
+        Update network stats is used to create metrics for "throughput" & "compactness".
 
+        Parameters: 
+        core (int number of cores)
+        """
         if self.current_time > 0:
             last_throughput = self.topology.graph['throughput']
 
