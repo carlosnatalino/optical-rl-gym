@@ -242,6 +242,15 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.topology.graph['last_update'] = self.current_time
 
     def _update_link_stats(self, core, node1: str, node2: str):
+
+        """ Creates metrics for:
+        Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
+        Parameters
+        ----------
+        core : int number of cores,
+        node1, node2 : str number of the node within the node_list,
+        Returns nothing """
+
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
 
@@ -254,7 +263,9 @@ class RMCSAEnv(OpticalNetworkEnv):
                        self.num_spectrum_resources
             utilization = ((last_util * last_update) + (cur_util * time_diff)) / self.current_time
             self.topology[node1][node2]['utilization'] = utilization
+            # Adds each node utilization value to an array
             self.utilization.append(utilization)
+            # Adds each node utilization value to the core key within a dictionary
             self.core_utilization[core].append(utilization)
 
             slot_allocation = self.topology.graph['available_slots'][core, self.topology[node1][node2]['index'], :]
