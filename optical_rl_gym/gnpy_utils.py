@@ -1,3 +1,6 @@
+import json
+import os
+
 from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
 from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
@@ -41,13 +44,19 @@ def topology_to_json(topology):
             data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
                                        "to_node": connected_node})
 
-    return data
+    data_json = json.dumps(data)
+    t = open("topology_data.json", "w")
+    t.write(data_json)
+    t.close()
 
 
 def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
     """ Create network topology from JSON and outputs SNR based on inputs """
+    if not os.path.exists("topology_data.json"):
+        topology_to_json(topology)
     equipment = load_equipment(eqpt)
-    json_data = topology_to_json(topology)
+    with open("topology_data.json") as d:
+        json_data = json.load(d)
     network = network_from_json(json_data, equipment)
     build_network(network, equipment, 0, 20)
 
