@@ -18,7 +18,7 @@ class DeepRMSAEnv(RMSAEnv):
                  allow_rejection=False):
         super().__init__(topology=topology,
                          episode_length=episode_length,
-                         load=mean_service_holding_time / mean_service_inter_arrival_time,
+                         load=mean_service_holding_time * mean_service_inter_arrival_time,
                          mean_service_holding_time=mean_service_holding_time,
                          num_spectrum_resources=num_spectrum_resources,
                          node_request_probabilities=node_request_probabilities,
