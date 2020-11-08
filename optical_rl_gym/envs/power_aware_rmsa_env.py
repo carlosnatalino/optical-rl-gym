@@ -8,11 +8,11 @@ import numpy as np
 
 from optical_rl_gym.utils import Service, Path
 from .optical_network_env import OpticalNetworkEnv
-from optical_rl_gym.gnpy_utils import propagation, topology_to_json
-from gnpy.tools.json_io import load_equipment, network_from_json
+from optical_rl_gym.gnpy_utils import propagation
 
 
 class PowerAwareRMSA(OpticalNetworkEnv):
+    eqpt_library = '../examples/tests/data/eqpt_config.json'
     metadata = {
         'metrics': ['service_blocking_rate', 'episode_service_blocking_rate',
                     'bit_rate_blocking_rate', 'episode_bit_rate_blocking_rate']
@@ -40,9 +40,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
         assert 'modulations' in self.topology.graph
-        self.eqpt_library = load_equipment('../examples/tests/data/eqpt_config.json')
-        x = topology_to_json(self.topology)
-        self.gnpy_network = network_from_json(x, self.eqpt_library)
         # specific attributes for elastic optical networks
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
@@ -70,7 +67,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                                 self.launch_power + 1),
                                                dtype=int)
         self.actions_taken = np.zeros((self.k_paths + 1,
-                                       self.num_spectrum_resources + 1,
+                                      self.num_spectrum_resources + 1,
                                        self.launch_power + 1),
                                       dtype=int)
         self.episode_actions_taken = np.zeros((self.k_paths + 1,
@@ -78,7 +75,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                                self.launch_power + 1),
                                               dtype=int)
         self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
-                                                      self.num_spectrum_resources + self.reject_action,
+                                                     self.num_spectrum_resources + self.reject_action,
                                                       self.launch_power + self.reject_action))
         self.observation_space = gym.spaces.Dict(
             {'topology': gym.spaces.Discrete(10),
@@ -98,27 +95,19 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
     def step(self, action: [int]):
         path, initial_slot, launch_power = action[0], action[1], action[2]
-        osnr = np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
-                                   self.gnpy_network, self.eqpt_library))
         self.actions_output[path, initial_slot, launch_power] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
-            self.logger.debug(
-                '{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id,
-                                                                                          action, path, initial_slot,
-                                                                                          slots))
+            self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],
-                                 initial_slot, slots):
-                # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
-                min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation["minimum_osnr"]
-                if osnr < min_osnr:
-                    self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
-                                         initial_slot, slots)
-                    self.service.accepted = True
-                    self.actions_taken[path, initial_slot, launch_power] += 1
-                    self._add_release(self.service)
-                else:
-                    self.service.accepted = False
+                                 initial_slot, slots, launch_power):
+                self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
+                                     initial_slot, slots, launch_power)
+                self.service.accepted = True
+                self.actions_taken[path, initial_slot, launch_power] += 1
+                self._add_release(self.service)
+            else:
+                self.service.accepted = False
         else:
             self.service.accepted = False
 
@@ -134,13 +123,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         reward = self.reward()
         info = {
-            'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
-            'episode_service_blocking_rate': (
-                                                         self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
-            'bit_rate_blocking_rate': (self.bit_rate_requested - self.bit_rate_provisioned) / self.bit_rate_requested,
-            'episode_bit_rate_blocking_rate': (
-                                                          self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
-        }
+                   'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
+                   'episode_service_blocking_rate': (self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
+                   'bit_rate_blocking_rate': (self.bit_rate_requested - self.bit_rate_provisioned) / self.bit_rate_requested,
+                   'episode_bit_rate_blocking_rate': (self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
+               }
 
         self._new_service = False
         self._next_service()
@@ -166,8 +153,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
 
-        self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources),
-                                                         dtype=int)
+        self.topology.graph["available_slots"] = np.ones((self.topology.number_of_edges(), self.num_spectrum_resources), dtype=int)
 
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
@@ -185,20 +171,18 @@ class PowerAwareRMSA(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, path: Path, initial_slot, number_slots):
+    def _provision_path(self, path: Path, initial_slot, number_slots, launch_power):
         # usage
-        if not self.is_path_free(path, initial_slot, number_slots):
+        if not self.is_path_free(path, initial_slot, number_slots, launch_power):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
                                                                                      initial_slot + number_slots))
 
-        self.logger.debug(
-            '{} assigning path {} on initial slot {} for {} slots'.format(self.service.service_id, path.node_list,
-                                                                          initial_slot, number_slots))
+        self.logger.debug('{} assigning path {} on initial slot {} for {} slots'.format(self.service.service_id, path.node_list, initial_slot, number_slots))
         for i in range(len(path.node_list) - 1):
             self.topology.graph['available_slots'][self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
-            initial_slot:initial_slot + number_slots] = 0
+                                                                        initial_slot:initial_slot + number_slots] = 0
             self.spectrum_slots_allocation[self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
-            initial_slot:initial_slot + number_slots] = self.service.service_id
+                                                    initial_slot:initial_slot + number_slots] = self.service.service_id
             self.topology[path.node_list[i]][path.node_list[i + 1]]['services'].append(self.service)
             self.topology[path.node_list[i]][path.node_list[i + 1]]['running_services'].append(self.service)
             self._update_link_stats(path.node_list[i], path.node_list[i + 1])
@@ -216,13 +200,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
     def _release_path(self, service: Service):
         for i in range(len(service.route.node_list) - 1):
             self.topology.graph['available_slots'][
-            self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
-            service.initial_slot:service.initial_slot + service.number_slots] = 1
-            self.spectrum_slots_allocation[
-            self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
-            service.initial_slot:service.initial_slot + service.number_slots] = -1
-            self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['running_services'].remove(
-                service)
+                self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
+                                            service.initial_slot:service.initial_slot + service.number_slots] = 1
+            self.spectrum_slots_allocation[self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
+                                            service.initial_slot:service.initial_slot + service.number_slots] = -1
+            self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['running_services'].remove(service)
             self._update_link_stats(service.route.node_list[i], service.route.node_list[i + 1])
         self.topology.graph['running_services'].remove(service)
 
@@ -242,7 +224,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.topology.graph['throughput'] = throughput
 
             compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
-                          self.current_time
+                              self.current_time
             self.topology.graph['compactness'] = compactness
 
         self.topology.graph['last_update'] = self.current_time
@@ -290,18 +272,16 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
                     if unused_spectrum_slots > 0:
                         cur_link_compactness = ((lambda_max - lambda_min) / np.sum(1 - slot_allocation)) * (
-                                1 / unused_spectrum_slots)
+                                    1 / unused_spectrum_slots)
                     else:
                         cur_link_compactness = 1.
                 else:
                     cur_link_compactness = 1.
 
-            external_fragmentation = ((last_external_fragmentation * last_update) + (
-                        cur_external_fragmentation * time_diff)) / self.current_time
+            external_fragmentation = ((last_external_fragmentation * last_update) + (cur_external_fragmentation * time_diff)) / self.current_time
             self.topology[node1][node2]['external_fragmentation'] = external_fragmentation
 
-            link_compactness = ((last_compactness * last_update) + (
-                        cur_link_compactness * time_diff)) / self.current_time
+            link_compactness = ((last_compactness * last_update) + (cur_link_compactness * time_diff)) / self.current_time
             self.topology[node1][node2]['compactness'] = link_compactness
 
         self.topology[node1][node2]['last_update'] = self.current_time
@@ -349,7 +329,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, path: Path, initial_slot: int, number_slots: int, launch_power: int) -> bool:
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
@@ -358,14 +338,17 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                       self.topology[path.node_list[i]][path.node_list[i + 1]]['index'],
                       initial_slot:initial_slot + number_slots] == 0):
                 return False
+        if np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
+                               self.topology, self.eqpt_library)) < 10:
+
+            return False
 
         return True
 
     def get_available_slots(self, path: Path):
         available_slots = functools.reduce(np.multiply,
-                                           self.topology.graph["available_slots"][
-                                           [self.topology[path.node_list[i]][path.node_list[i + 1]]['id']
-                                            for i in range(len(path.node_list) - 1)], :])
+            self.topology.graph["available_slots"][[self.topology[path.node_list[i]][path.node_list[i + 1]]['id']
+                                                    for i in range(len(path.node_list) - 1)], :])
         return available_slots
 
     def rle(inarray):
@@ -451,8 +434,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 def shortest_path_first_fit(env: PowerAwareRMSA) -> int:
     num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
-        if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot,
-                            num_slots):
+        if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot, num_slots):
             return [0, initial_slot]
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
@@ -477,7 +459,7 @@ def least_loaded_path_first_fit(env: PowerAwareRMSA) -> int:
                 if free_slots > max_free_slots:
                     action = [idp, initial_slot]
                     max_free_slots = free_slots
-                break  # breaks the loop for the initial slot
+                break # breaks the loop for the initial slot
     return action
 
 
@@ -498,8 +480,8 @@ class SimpleMatrixObservation(gym.ObservationWrapper):
         source_destination_tau[1, max_node] = 1
         spectrum_obs = copy.deepcopy(self.topology.graph["available_slots"])
         return np.concatenate((source_destination_tau.reshape((1, np.prod(source_destination_tau.shape))),
-                               spectrum_obs.reshape((1, np.prod(spectrum_obs.shape)))), axis=1) \
-            .reshape(self.observation_space.shape)
+                               spectrum_obs.reshape((1, np.prod(spectrum_obs.shape)))), axis=1)\
+                            .reshape(self.observation_space.shape)
 
 
 class PathOnlyFirstFitAction(gym.ActionWrapper):
@@ -516,7 +498,7 @@ class PathOnlyFirstFitAction(gym.ActionWrapper):
             for initial_slot in range(0, self.env.topology.graph['num_spectrum_resources'] - num_slots):
                 if self.env.is_path_free(self.env.k_shortest_paths[self.env.service.source,
                                                                    self.env.service.destination][action],
-                                         initial_slot, num_slots):
+                                        initial_slot, num_slots):
                     return [action, initial_slot]
         return [self.env.topology.graph['k_paths'], self.env.topology.graph['num_spectrum_resources']]
 

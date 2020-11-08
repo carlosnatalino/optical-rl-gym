@@ -14,7 +14,7 @@ logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
-episode_length = 10
+episode_length = 5
 
 monitor_files = []
 policies = []
@@ -22,7 +22,7 @@ policies = []
 # topology_name = 'gbn'
 # topology_name = 'nobel-us'
 # topology_name = 'germany50'
-with open(f'../examples/topologies/germany50_eon_gnpy_5-paths.h5', 'rb') as f:
+with open(f'../examples/topologies/nsfnet_chen_eon_5-paths.h5', 'rb') as f:
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
@@ -36,6 +36,7 @@ mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_e
 print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
 print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
+np.os.remove("topology_data.json")
 
 # env_sp = gym.make('PowerAwareRMSA-v0', **env_args)
 # mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sp, shortest_path_first_fit, n_eval_episodes=episodes)
