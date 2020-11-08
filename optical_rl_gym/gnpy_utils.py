@@ -44,21 +44,17 @@ def topology_to_json(topology):
             data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
                                        "to_node": connected_node})
 
-    data_json = json.dumps(data)
-    t = open("topology_data.json", "w")
-    t.write(data_json)
-    t.close()
+    return data
 
 
-def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
+def propagation(input_power, con_in, con_out, source, dest, network, eqpt):
     """ Create network topology from JSON and outputs SNR based on inputs """
-    if not os.path.exists("topology_data.json"):
-        topology_to_json(topology)
-    equipment = load_equipment(eqpt)
-    with open("topology_data.json") as d:
-        json_data = json.load(d)
-    network = network_from_json(json_data, equipment)
-    build_network(network, equipment, 0, 20)
+    # if not os.path.exists("topology_data.json"):
+    #     topology_to_json(topology)
+    # with open("topology_data.json") as d:
+    #     json_data = json.load(d)
+    # network = network_from_json(json_data, eqpt)
+    build_network(network, eqpt, 0, 20)
 
     # parametrize the network elements with the con losses and adapt gain
     # (assumes all spans are identical)
@@ -81,6 +77,7 @@ def propagation(input_power, con_in, con_out, source, dest, topology, eqpt):
     source_node = next(transceivers[uid] for uid in transceivers if uid == source)
     sink = next(transceivers[uid] for uid in transceivers if uid == dest)
     path = dijkstra_path(network, source_node, sink)
+
     for el in path:
         si = el(si)
 
