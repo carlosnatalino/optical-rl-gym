@@ -6,6 +6,8 @@ import logging
 import functools
 import numpy as np
 
+from collections import defaultdict
+
 from optical_rl_gym.utils import Service, Path
 from .optical_network_env import OpticalNetworkEnv
 
@@ -45,6 +47,9 @@ class RMCSAEnv(OpticalNetworkEnv):
         self.bit_rate_provisioned = 0
         self.episode_bit_rate_requested = 0
         self.episode_bit_rate_provisioned = 0
+
+        self.utilization = []
+        self.core_utilization = defaultdict(list)
 
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
@@ -95,9 +100,9 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        core, path, initial_slot = action[0], action[1], action[2]  # next step: utils.random_policy does not allow core through actions
+        core, path, initial_slot = action[0], action[1], action[2]
         self.actions_output[core, path, initial_slot] += 1
-        if core < self.num_spatial_resources and path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
+        if core < self.num_spatial_resources and path < self.k_paths and initial_slot < self.num_spectrum_resources:
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
             if self.is_path_free(core, self.k_shortest_paths[self.service.source, self.service.destination][path],
@@ -188,13 +193,13 @@ class RMCSAEnv(OpticalNetworkEnv):
                                                     initial_slot:initial_slot + number_slots] = self.service.service_id
             self.topology[path.node_list[i]][path.node_list[i + 1]]['services'].append(self.service)
             self.topology[path.node_list[i]][path.node_list[i + 1]]['running_services'].append(self.service)
-            self._update_link_stats(path.node_list[i], path.node_list[i + 1])
+            self._update_link_stats(core, path.node_list[i], path.node_list[i + 1])
         self.topology.graph['running_services'].append(self.service)
         self.service.route = path
         self.service.initial_slot = initial_slot
         self.service.number_slots = number_slots
         self.service.core = core
-        self._update_network_stats()
+        self._update_network_stats(core)
 
         self.services_accepted += 1
         self.episode_services_accepted += 1
@@ -210,17 +215,24 @@ class RMCSAEnv(OpticalNetworkEnv):
                     self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['index'],
                                             service.initial_slot:service.initial_slot + service.number_slots] = -1
             self.topology[service.route.node_list[i]][service.route.node_list[i + 1]]['running_services'].remove(service)
-            self._update_link_stats(service.route.node_list[i], service.route.node_list[i + 1])
+            self._update_link_stats(service.core, service.route.node_list[i], service.route.node_list[i + 1])
         self.topology.graph['running_services'].remove(service)
 
-    def _update_network_stats(self):
+    def _update_network_stats(self, core):
+        """
+        Update network stats is used to create metrics for "throughput" & "compactness".
+
+        Parameters
+        ----------
+        core: int number of cores
+
+        Returns nothing """
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
-
         if self.current_time > 0:
             last_throughput = self.topology.graph['throughput']
 
-            # last_compactness = self.topology.graph['compactness']
+            last_compactness = self.topology.graph['compactness']
 
             cur_throughput = 0.
 
@@ -230,27 +242,42 @@ class RMCSAEnv(OpticalNetworkEnv):
             throughput = ((last_throughput * last_update) + (cur_throughput * time_diff)) / self.current_time
             self.topology.graph['throughput'] = throughput
 
-            # compactness = ((last_compactness * last_update) + (self._get_network_compactness() * time_diff)) / \
-            #                  self.current_time
-            # self.topology.graph['compactness'] = compactness
+            compactness = ((last_compactness * last_update) + (self._get_network_compactness(core) * time_diff)) / \
+                              self.current_time
+            self.topology.graph['compactness'] = compactness
 
         self.topology.graph['last_update'] = self.current_time
 
-    def _update_link_stats(self, node1: str, node2: str):
+    def _update_link_stats(self, core, node1: str, node2: str):
+
+        """ Creates metrics for:
+        Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
+
+        Parameters
+        ----------
+        core : int number of cores,
+        node1, node2 : str number of the node within the node_list
+
+        Returns nothing """
+
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
-        """
-        Heuristic stats. Not mandatory for functionality of simulator.
-        
+
+        # Heuristic stats. Not mandatory for functionality of simulator.
+
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
             cur_util = (self.num_spectrum_resources - np.sum(
-                self.topology.graph['available_slots'][self.topology[node1][node2]['index'], :])) / \
+                self.topology.graph['available_slots'][core, self.topology[node1][node2]['index'], :])) / \
                        self.num_spectrum_resources
             utilization = ((last_util * last_update) + (cur_util * time_diff)) / self.current_time
             self.topology[node1][node2]['utilization'] = utilization
+            # Adds each node utilization value to an array
+            self.utilization.append(utilization)
+            # Adds each node utilization value to the core key within a dictionary
+            self.core_utilization[core].append(utilization)
 
-            slot_allocation = self.topology.graph['available_slots'][self.topology[node1][node2]['index'], :]
+            slot_allocation = self.topology.graph['available_slots'][core, self.topology[node1][node2]['index'], :]
 
             # implementing fragmentation from https://ieeexplore.ieee.org/abstract/document/6421472
             last_external_fragmentation = self.topology[node1][node2]['external_fragmentation']
@@ -293,7 +320,7 @@ class RMCSAEnv(OpticalNetworkEnv):
 
             link_compactness = ((last_compactness * last_update) + (cur_link_compactness * time_diff)) / self.current_time
             self.topology[node1][node2]['compactness'] = link_compactness
-        """
+
 
         self.topology[node1][node2]['last_update'] = self.current_time
 
@@ -342,9 +369,17 @@ class RMCSAEnv(OpticalNetworkEnv):
 
     def is_path_free(self, core: int, path: Path, initial_slot: int, number_slots: int) -> bool:
         """
-        NEW DOC STRING, NOT FINAL
-
         Method that determines if the path is free for the core, path, and initial_slot.
+
+        Parameters
+        ----------
+
+        core : int number of cores
+
+        Returns
+        -------
+
+        return: True/False
         """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
@@ -404,7 +439,7 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         return initial_indices[final_indices], lengths[final_indices]
 
-    def _get_network_compactness(self):
+    def _get_network_compactness(self, core):
         # implementing network spectrum compactness from https://ieeexplore.ieee.org/abstract/document/6476152
 
         sum_slots_paths = 0  # this accounts for the sum of all Bi * Hi
@@ -422,7 +457,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         for n1, n2 in self.topology.edges():
             # getting the blocks
             initial_indices, values, lengths = \
-                RMCSAEnv.rle(self.topology.graph['available_slots'][self.topology[n1][n2]['index'], :])
+                RMCSAEnv.rle(self.topology.graph['available_slots'][core, self.topology[n1][n2]['index'], :])
             used_blocks = [i for i, x in enumerate(values) if x == 0]
             if len(used_blocks) > 1:
                 lambda_min = initial_indices[used_blocks[0]]
@@ -431,7 +466,7 @@ class RMCSAEnv(OpticalNetworkEnv):
 
                 # evaluate again only the "used part" of the spectrum
                 internal_idx, internal_values, internal_lengths = RMCSAEnv.rle(
-                    self.topology.graph['available_slots'][self.topology[n1][n2]['index'], lambda_min:lambda_max])
+                    self.topology.graph['available_slots'][core, self.topology[n1][n2]['index'], lambda_min:lambda_max])
                 sum_unused_spectrum_blocks += np.sum(internal_values)
 
         if sum_unused_spectrum_blocks > 0:
@@ -451,15 +486,26 @@ def shortest_path_first_fit(env: RMCSAEnv) -> int:
     return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
-def shortest_available_path_first_fit(env: RMCSAEnv) -> int:
+def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
+    """
+    Algorithm for determining the shortest available first core first fit path
+
+    Parameters
+    ----------
+    env : OpenAI Gym object containing RMCSA environment
+
+    Returns
+    -------
+    :return: Cores, paths, and number of spectrum resources
+    """
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
-        # Loop for core
-        for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
-            if env.is_path_free(path, initial_slot, num_slots):
-                return [idp, initial_slot]
-            # Add core to return?
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+        # Iteration of core
+        for core in range(env.num_spatial_resources):
+            for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
+                if env.is_path_free(core, path, initial_slot, num_slots):
+                    return [core, idp, initial_slot]
+    return [env.num_spatial_resources, env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
 
 
 def least_loaded_path_first_fit(env: RMCSAEnv) -> int:
