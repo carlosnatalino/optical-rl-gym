@@ -170,7 +170,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
-
         self.topology.graph["compactness"] = 0.
         self.topology.graph["throughput"] = 0.
         for idx, lnk in enumerate(self.topology.edges()):
@@ -448,12 +447,13 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
 
 def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
+    power = env.launch_power
     num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
         if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot,
                             num_slots):
-            return [0, initial_slot]
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+            return [0, initial_slot, power]
+    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'], power]
 
 
 def shortest_path_first_fit(env: PowerAwareRMSA) -> int:
