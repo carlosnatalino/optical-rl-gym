@@ -447,6 +447,15 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         return cur_spectrum_compactness
 
 
+def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
+    num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
+    for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
+        if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot,
+                            num_slots):
+            return [0, initial_slot]
+    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+
+
 def shortest_path_first_fit(env: PowerAwareRMSA) -> int:
     num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
