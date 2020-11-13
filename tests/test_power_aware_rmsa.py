@@ -9,7 +9,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-load = 5
+load = 50
 logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 
 seed = 20

@@ -23,7 +23,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 launch_power=5,
+                 launch_power=6,
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -122,7 +122,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.service.accepted = False
 
         if not self.service.accepted:
-            self.actions_taken[self.k_paths, self.num_spectrum_resources, launch_power] += 1
+            self.actions_taken[self.k_paths, self.num_spectrum_resources, self.launch_power] += 1
 
         self.services_processed += 1
         self.episode_services_processed += 1
