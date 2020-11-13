@@ -23,7 +23,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                  load=5,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 launch_power=5,
+                 launch_power=None,
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,

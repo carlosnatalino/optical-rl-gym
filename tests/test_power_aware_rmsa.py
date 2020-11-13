@@ -9,6 +9,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+launch_power = 6
 load = 50
 logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 
@@ -26,7 +27,7 @@ with open(f'../examples/topologies/germany50_eon_gnpy_5-paths.h5', 'rb') as f:
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
-                episode_length=episode_length, num_spectrum_resources=64)
+                episode_length=episode_length, num_spectrum_resources=64, launch_power=launch_power)
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
