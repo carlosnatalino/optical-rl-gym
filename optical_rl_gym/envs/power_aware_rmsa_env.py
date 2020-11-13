@@ -20,10 +20,10 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
     def __init__(self, topology=None,
                  episode_length=1000,
-                 load=10,
+                 load=5,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
-                 launch_power=15,
+                 launch_power=5,
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -110,7 +110,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation["minimum_osnr"]
-                if osnr < min_osnr:
+                if osnr >= min_osnr:
                     self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
                                          initial_slot, slots)
                     self.service.accepted = True
@@ -122,7 +122,8 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.service.accepted = False
 
         if not self.service.accepted:
-            self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
+            # Added self.launch_power. Verify implementation.
+            self.actions_taken[self.k_paths, self.num_spectrum_resources, self.launch_power] += 1
 
         self.services_processed += 1
         self.episode_services_processed += 1
