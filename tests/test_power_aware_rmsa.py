@@ -9,6 +9,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+launch_power = 6
 load = 50
 logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 

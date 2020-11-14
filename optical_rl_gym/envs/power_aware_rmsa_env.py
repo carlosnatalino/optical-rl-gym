@@ -20,7 +20,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
     def __init__(self, topology=None,
                  episode_length=1000,
-                 load=10,
+                 load=5,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
                  node_request_probabilities=None,
