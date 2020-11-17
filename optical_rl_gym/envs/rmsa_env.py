@@ -5,6 +5,7 @@ import heapq
 import logging
 import functools
 import numpy as np
+from collections import defaultdict
 
 from optical_rl_gym.utils import Service, Path
 from .optical_network_env import OpticalNetworkEnv
@@ -22,6 +23,9 @@ class RMSAEnv(OpticalNetworkEnv):
                  load=10,
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
+                 bit_rate_selection='continuous',
+                 bit_rates=[10, 40, 100],
+                 bit_rate_probabilities=None,
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -37,15 +41,53 @@ class RMSAEnv(OpticalNetworkEnv):
                          node_request_probabilities=node_request_probabilities,
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
+
+        # make sure that modulations are set in the topology
         assert 'modulations' in self.topology.graph
+
+        # asserting that the bit rate selection and parameters are correctly set
+        assert bit_rate_selection in ['continuous', 'discrete']
+        assert (bit_rate_selection is 'continuous') or \
+               (bit_rate_selection is 'discrete' and
+                (bit_rate_probabilities is None or len(bit_rates) == len(bit_rate_probabilities)))
+
         # specific attributes for elastic optical networks
         self.bit_rate_requested = 0
         self.bit_rate_provisioned = 0
         self.episode_bit_rate_requested = 0
         self.episode_bit_rate_provisioned = 0
 
-        self.bit_rate_lower_bound = bit_rate_lower_bound
-        self.bit_rate_higher_bound = bit_rate_higher_bound
+        # setting up bit rate selection
+        self.bit_rate_selection = bit_rate_selection
+        if self.bit_rate_selection is 'continuous':
+            self.bit_rate_lower_bound = bit_rate_lower_bound
+            self.bit_rate_higher_bound = bit_rate_higher_bound
+
+            # creating a partial function for the bit rate continuous selection
+            self.bit_rate_function = functools.partial(self.rng.randint, self.bit_rate_lower_bound,
+                                                       self.bit_rate_higher_bound)
+        elif self.bit_rate_selection is 'discrete':
+            if bit_rate_probabilities is None:
+                bit_rate_probabilities = [1. / len(bit_rates) for x in range(len(bit_rates))]
+            self.bit_rate_probabilities = bit_rate_probabilities
+            self.bit_rates = bit_rates
+
+            # creating a partial function for the discrete bit rate options
+            self.bit_rate_function = functools.partial(self.rng.choices, self.bit_rates, self.bit_rate_probabilities,
+                                                       k=1)
+
+            # defining histograms which are only used for the discrete bit rate selection
+            self.bit_rate_requested_histogram = defaultdict(int)
+            self.bit_rate_provisioned_histogram = defaultdict(int)
+            self.episode_bit_rate_requested_histogram = defaultdict(int)
+            self.episode_bit_rate_provisioned_histogram = defaultdict(int)
+
+            self.slots_requested_histogram = defaultdict(int)
+            self.episode_slots_requested_histogram = defaultdict(int)
+            self.slots_provisioned_histogram = defaultdict(int)
+            self.episode_slots_provisioned_histogram = defaultdict(int)
+
+        self.spectrum_usage = np.zeros((self.topology.number_of_edges(), self.num_spectrum_resources), dtype=int)
 
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
@@ -82,11 +124,17 @@ class RMSAEnv(OpticalNetworkEnv):
                 'Set it to INFO if DEBUG is not necessary.')
         self._new_service = False
         if reset:
-            self.reset(only_counters=False)
+            self.reset(only_episode_counters=False)
 
     def step(self, action: [int]):
         path, initial_slot = action[0], action[1]
+
+        # registering overall statistics
         self.actions_output[path, initial_slot] += 1
+        previous_network_compactness = self._get_network_compactness() # used for compactness difference measure
+
+        # starting the service as rejected
+        self.service.accepted = False
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug('{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id, action, path, initial_slot, slots))
@@ -96,35 +144,55 @@ class RMSAEnv(OpticalNetworkEnv):
                                      initial_slot, slots)
                 self.service.accepted = True
                 self.actions_taken[path, initial_slot] += 1
+                if self.bit_rate_selection is 'discrete': # if discrete bit rate is being used
+                    self.slots_provisioned_histogram[slots] += 1 # populate the histogram of bit rates
                 self._add_release(self.service)
-            else:
-                self.service.accepted = False
-        else:
-            self.service.accepted = False
 
         if not self.service.accepted:
             self.actions_taken[self.k_paths, self.num_spectrum_resources] += 1
 
-        self.services_processed += 1
-        self.episode_services_processed += 1
-        self.bit_rate_requested += self.service.bit_rate
-        self.episode_bit_rate_requested += self.service.bit_rate
-
         self.topology.graph['services'].append(self.service)
+
+        # generating statistics for the episode info
+        if self.bit_rate_selection is 'discrete':
+            blocking_per_bit_rate = {}
+            for bit_rate in self.bit_rates:
+                if self.bit_rate_requested_histogram[bit_rate] > 0:
+                    # computing the blocking rate per bit rate requested in the increasing order of bit rate
+                    blocking_per_bit_rate[bit_rate] = (self.bit_rate_requested_histogram[bit_rate] - \
+                                                       self.bit_rate_provisioned_histogram[bit_rate]) / \
+                                                      self.bit_rate_requested_histogram[bit_rate]
+                else:
+                    blocking_per_bit_rate[bit_rate] = .0
+
+        cur_network_compactness = self._get_network_compactness() # measuring compactness after the provisioning
 
         reward = self.reward()
         info = {
                    'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
                    'episode_service_blocking_rate': (self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
                    'bit_rate_blocking_rate': (self.bit_rate_requested - self.bit_rate_provisioned) / self.bit_rate_requested,
-                   'episode_bit_rate_blocking_rate': (self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
+                   'episode_bit_rate_blocking_rate': (self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested,
+                   'network_compactness': cur_network_compactness,
+                   'network_compactness_difference': previous_network_compactness - cur_network_compactness,
+                   'avg_link_compactness': np.mean(
+                        [self.topology[lnk[0]][lnk[1]]['compactness'] for lnk in self.topology.edges()]),
+                   'avg_link_utilization': np.mean(
+                        [self.topology[lnk[0]][lnk[1]]['utilization'] for lnk in self.topology.edges()]),
                }
+
+        # informing the blocking rate per bit rate
+        # sorting by the bit rate to match the previous computation
+        if self.bit_rate_selection is 'discrete':
+            for bit_rate, blocking in blocking_per_bit_rate.items():
+                info[f'bit_rate_blocking_{bit_rate}'] = blocking
+            info['fairness'] = max(blocking_per_bit_rate.values()) - min(blocking_per_bit_rate.values())
 
         self._new_service = False
         self._next_service()
         return self.observation(), reward, self.episode_services_processed == self.episode_length, info
 
-    def reset(self, only_counters=True):
+    def reset(self, only_episode_counters=True):
         self.episode_bit_rate_requested = 0
         self.episode_bit_rate_provisioned = 0
         self.episode_services_processed = 0
@@ -136,7 +204,25 @@ class RMSAEnv(OpticalNetworkEnv):
                                                self.num_spectrum_resources + self.reject_action),
                                               dtype=int)
 
-        if only_counters:
+        if self.bit_rate_selection is 'discrete':
+            self.episode_bit_rate_requested_histogram = defaultdict(int)
+            self.episode_bit_rate_provisioned_histogram = defaultdict(int)
+            self.episode_slots_requested_histogram = defaultdict(int)
+            self.episode_slots_provisioned_histogram = defaultdict(int)
+
+        if only_episode_counters:
+            if self._new_service:
+                # initializing episode counters
+                # note that when the environment is reset, the current service remains the same and should be accounted for
+                self.episode_services_processed += 1
+                self.episode_bit_rate_requested += self.service.bit_rate
+                if self.bit_rate_selection is 'discrete':
+                    self.episode_bit_rate_requested_histogram[self.service.bit_rate] += 1
+
+                    # we build the histogram of slots requested assuming the shortest path
+                    slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][0])
+                    self.episode_slots_requested_histogram[slots] += 1
+
             return self.observation()
 
         super().reset()
@@ -148,6 +234,10 @@ class RMSAEnv(OpticalNetworkEnv):
 
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
+
+        if self.bit_rate_selection is 'discrete':
+            self.bit_rate_requested_histogram = defaultdict(int)
+            self.bit_rate_provisioned_histogram = defaultdict(int)
 
         self.topology.graph["compactness"] = 0.
         self.topology.graph["throughput"] = 0.
@@ -187,6 +277,11 @@ class RMSAEnv(OpticalNetworkEnv):
         self.episode_services_accepted += 1
         self.bit_rate_provisioned += self.service.bit_rate
         self.episode_bit_rate_provisioned += self.service.bit_rate
+
+        if self.bit_rate_selection is 'discrete': # if bit rate selection is discrete, populate the histograms
+            self.slots_provisioned_histogram[self.service.number_slots] += 1
+            self.bit_rate_provisioned_histogram[self.service.bit_rate] += 1
+            self.episode_bit_rate_provisioned_histogram[self.service.bit_rate] += 1
 
     def _release_path(self, service: Service):
         for i in range(len(service.route.node_list) - 1):
@@ -286,7 +381,28 @@ class RMSAEnv(OpticalNetworkEnv):
         ht = self.rng.expovariate(1 / self.mean_service_holding_time)
         src, src_id, dst, dst_id = self._get_node_pair()
 
-        bit_rate = self.rng.randint(self.bit_rate_lower_bound, self.bit_rate_higher_bound)
+        # generate the bit rate according to the selection adopted
+        bit_rate = self.bit_rate_function() if self.bit_rate_selection is 'continuous' else self.bit_rate_function()[0]
+
+        self.service = Service(self.episode_services_processed, src, src_id,
+                               destination=dst, destination_id=dst_id,
+                               arrival_time=at, holding_time=ht, bit_rate=bit_rate)
+        self._new_service = True
+
+        self.services_processed += 1
+        self.episode_services_processed += 1
+
+        # registering statistics about the bit rate requested
+        self.bit_rate_requested += self.service.bit_rate
+        self.episode_bit_rate_requested += self.service.bit_rate
+        if self.bit_rate_selection is 'discrete':
+            self.bit_rate_requested_histogram[bit_rate] += 1
+            self.episode_bit_rate_requested_histogram[bit_rate] += 1
+
+            # we build the histogram of slots requested assuming the shortest path
+            slots = self.get_number_slots(self.k_shortest_paths[src, dst][0])
+            self.slots_requested_histogram[slots] += 1
+            self.episode_slots_requested_histogram[slots] += 1
 
         # release connections up to this point
         while len(self._events) > 0:
@@ -296,11 +412,6 @@ class RMSAEnv(OpticalNetworkEnv):
             else:  # release is not to be processed yet
                 self._add_release(service_to_release)  # puts service back in the queue
                 break  # breaks the loop
-
-        self.service = Service(self.episode_services_processed, src, src_id,
-                               destination=dst, destination_id=dst_id,
-                               arrival_time=at, holding_time=ht, bit_rate=bit_rate)
-        self._new_service = True
 
     def _get_path_slot_id(self, action: int) -> (int, int):
         """

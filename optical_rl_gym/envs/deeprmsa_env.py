@@ -33,7 +33,7 @@ class DeepRMSAEnv(RMSAEnv):
         self.action_space = gym.spaces.Discrete(self.k_paths * self.j + self.reject_action)
         self.action_space.seed(self.rand_seed)
         self.observation_space.seed(self.rand_seed)
-        self.reset(only_counters=False)
+        self.reset(only_episode_counters=False)
 
     def step(self, action: int):
         if action < self.k_paths * self.j:  # action is for assigning a path
@@ -83,8 +83,8 @@ class DeepRMSAEnv(RMSAEnv):
     def reward(self):
         return 1 if self.service.accepted else -1
 
-    def reset(self, only_counters=True):
-        return super().reset(only_counters=only_counters)
+    def reset(self, only_episode_counters=True):
+        return super().reset(only_episode_counters=only_episode_counters)
 
     def _get_path_block_id(self, action: int) -> (int, int):
         path = action // self.j

@@ -14,7 +14,7 @@ logging.getLogger('rmsaenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
-episode_length = 1000
+episode_length = 100
 
 monitor_files = []
 policies = []
@@ -26,7 +26,7 @@ with open(f'../examples/topologies/nsfnet_chen_eon_5-paths.h5', 'rb') as f:
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
-                episode_length=episode_length, num_spectrum_resources=64)
+                episode_length=episode_length, num_spectrum_resources=64, bit_rate_selection='discrete')
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
