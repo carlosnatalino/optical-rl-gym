@@ -10,6 +10,7 @@ from optical_rl_gym.utils import Service, Path
 from .optical_network_env import OpticalNetworkEnv
 from optical_rl_gym.gnpy_utils import propagation, topology_to_json
 from gnpy.tools.json_io import load_equipment, network_from_json
+from gnpy.core.utils import db2lin, lin2db
 
 
 class PowerAwareRMSA(OpticalNetworkEnv):
@@ -441,7 +442,8 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         return cur_spectrum_compactness
 
 
-def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA, power: None) -> int:
+def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
+    power = db2lin(5) * 1e-3
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
