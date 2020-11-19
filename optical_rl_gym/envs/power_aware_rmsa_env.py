@@ -101,9 +101,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
                 osnr = np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
                                            self.gnpy_network, self.eqpt_library))
-                min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation["minimum_osnr"]
+                min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation[
+                    "minimum_osnr"]
                 if osnr >= min_osnr:
-                    self._provision_path(launch_power, self.k_shortest_paths[self.service.source, self.service.destination][path],
+                    self._provision_path(launch_power,
+                                         self.k_shortest_paths[self.service.source, self.service.destination][path],
                                          initial_slot, slots)
                     self.service.accepted = True
                     self.actions_taken[path, initial_slot] += 1
@@ -127,10 +129,10 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         info = {
             'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
             'episode_service_blocking_rate': (
-                                                         self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
+                                                     self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
             'bit_rate_blocking_rate': (self.bit_rate_requested - self.bit_rate_provisioned) / self.bit_rate_requested,
             'episode_bit_rate_blocking_rate': (
-                                                          self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
+                                                      self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
         }
 
         self._new_service = False
@@ -288,11 +290,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                     cur_link_compactness = 1.
 
             external_fragmentation = ((last_external_fragmentation * last_update) + (
-                        cur_external_fragmentation * time_diff)) / self.current_time
+                    cur_external_fragmentation * time_diff)) / self.current_time
             self.topology[node1][node2]['external_fragmentation'] = external_fragmentation
 
             link_compactness = ((last_compactness * last_update) + (
-                        cur_link_compactness * time_diff)) / self.current_time
+                    cur_link_compactness * time_diff)) / self.current_time
             self.topology[node1][node2]['compactness'] = link_compactness
 
         self.topology[node1][node2]['last_update'] = self.current_time
@@ -439,8 +441,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         return cur_spectrum_compactness
 
 
-def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
-    power = 5
+def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA, power: None) -> int:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
