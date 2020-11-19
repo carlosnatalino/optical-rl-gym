@@ -9,13 +9,12 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-launch_power = 6
-load = 100
+load = 250
 logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
-episode_length = 200
+episode_length = 100
 
 monitor_files = []
 policies = []
