@@ -1,6 +1,6 @@
 import gym
 from optical_rl_gym.envs.power_aware_rmsa_env import shortest_path_first_fit, shortest_available_path_first_fit, \
-    least_loaded_path_first_fit, SimpleMatrixObservation
+    least_loaded_path_first_fit, SimpleMatrixObservation, shortest_available_path_first_fit_fixed_power
 from optical_rl_gym.utils import evaluate_heuristic, random_policy
 
 import pickle
@@ -14,7 +14,7 @@ logging.getLogger('rmsacomplexenv').setLevel(logging.INFO)
 
 seed = 20
 episodes = 10
-episode_length = 5
+episode_length = 3
 
 monitor_files = []
 policies = []
@@ -30,19 +30,19 @@ env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mea
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
-init_env = gym.make('PowerAwareRMSA-v0', **env_args)
-env_rnd = SimpleMatrixObservation(init_env)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_eval_episodes=episodes)
-print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
-print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
-print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
+# init_env = gym.make('PowerAwareRMSA-v0', **env_args)
+# env_rnd = SimpleMatrixObservation(init_env)
+# mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_eval_episodes=episodes)
+# print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
+# print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
+# print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
 
 # env_sp = gym.make('PowerAwareRMSA-v0', **env_args)
 # mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sp, shortest_path_first_fit, n_eval_episodes=episodes)
 # print('SP-FF:'.ljust(8), f'{mean_reward_sp:.4f}  {std_reward_sp:<7.4f}')
 # print('Bit rate blocking:', (env_sp.episode_bit_rate_requested - env_sp.episode_bit_rate_provisioned) / env_sp.episode_bit_rate_requested)
 # print('Request blocking:', (env_sp.episode_services_processed - env_sp.episode_services_accepted) / env_sp.episode_services_processed)
-#
+
 # env_sap = gym.make('PowerAwareRMSA-v0', **env_args)
 # mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sap, shortest_available_path_first_fit, n_eval_episodes=episodes)
 # print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
@@ -54,3 +54,9 @@ print('Request blocking:', (init_env.episode_services_processed - init_env.episo
 # print('LLP-FF:'.ljust(8), f'{mean_reward_llp:.4f}  {std_reward_llp:.4f}')
 # print('Bit rate blocking:', (env_llp.episode_bit_rate_requested - env_llp.episode_bit_rate_provisioned) / env_llp.episode_bit_rate_requested)
 # print('Request blocking:', (env_llp.episode_services_processed - env_llp.episode_services_accepted) / env_llp.episode_services_processed)
+
+env_sapfffp = gym.make('PowerAwareRMSA-v0', **env_args)
+mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sapfffp, shortest_available_path_first_fit_fixed_power, n_eval_episodes=episodes)
+print('SP-FF:'.ljust(8), f'{mean_reward_sp:.4f}  {std_reward_sp:<7.4f}')
+print('Bit rate blocking:', (env_sapfffp.episode_bit_rate_requested - env_sapfffp.episode_bit_rate_provisioned) / env_sapfffp.episode_bit_rate_requested)
+print('Request blocking:', (env_sapfffp.episode_services_processed - env_sapfffp.episode_services_accepted) / env_sapfffp.episode_services_processed)

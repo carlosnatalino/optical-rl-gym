@@ -97,10 +97,12 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
     def step(self, action: [int]):
         path, initial_slot, launch_power = action[0], action[1], action[2]
-        osnr = np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
-                                   self.gnpy_network, self.eqpt_library))
         self.actions_output[path, initial_slot, launch_power] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
+            sim_path = self.k_shortest_paths[self.service.source, self.service.destination][path].node_list
+            print(sim_path)
+            osnr = np.mean(propagation(launch_power, 1, 1, self.service.source, self.service.destination,
+                                       self.gnpy_network, self.eqpt_library, self.k_paths, sim_path))
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
             self.logger.debug(
                 '{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id,
@@ -110,7 +112,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation["minimum_osnr"]
-                if osnr < min_osnr:
+                if osnr >= min_osnr:
                     self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][path],
                                          initial_slot, slots)
                     self.service.accepted = True
@@ -452,8 +454,8 @@ def shortest_path_first_fit(env: PowerAwareRMSA) -> int:
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
         if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot,
                             num_slots):
-            return [0, initial_slot]
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+            return [0, initial_slot, 1]
+    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'], 1]
 
 
 def shortest_available_path_first_fit(env: PowerAwareRMSA) -> int:
@@ -479,6 +481,14 @@ def least_loaded_path_first_fit(env: PowerAwareRMSA) -> int:
                 break  # breaks the loop for the initial slot
     return action
 
+
+def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
+    num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
+    for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
+        if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot,
+                            num_slots):
+            return [0, initial_slot, 5]
+    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'], 2]
 
 class SimpleMatrixObservation(gym.ObservationWrapper):
 

@@ -1,13 +1,11 @@
-import json
-import os
-
 from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
 from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.network import build_network
 from gnpy.tools.json_io import load_equipment, network_from_json
-from networkx import dijkstra_path
-import time
+from networkx import dijkstra_path, shortest_simple_paths, neighbors
+from examples.graph_utils import get_k_shortest_paths
+import numpy as np
 
 
 def topology_to_json(topology):
@@ -44,17 +42,11 @@ def topology_to_json(topology):
                                        "to_node": f"Fiber ({node} \u2192 {connected_node})"})
             data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
                                        "to_node": connected_node})
-
     return data
 
 
-def propagation(input_power, con_in, con_out, source, dest, network, eqpt):
+def propagation(input_power, con_in, con_out, source, dest, network, eqpt, k_paths, sim_path):
     """ Create network topology from JSON and outputs SNR based on inputs """
-    # if not os.path.exists("topology_data.json"):
-    #     topology_to_json(topology)
-    # with open("topology_data.json") as d:
-    #     json_data = json.load(d)
-    # network = network_from_json(json_data, eqpt)
     build_network(network, eqpt, 0, 20)
 
     # parametrize the network elements with the con losses and adapt gain
@@ -68,6 +60,8 @@ def propagation(input_power, con_in, con_out, source, dest, network, eqpt):
             e.operational.gain_target = loss + con_in + con_out
 
     transceivers = {n.uid: n for n in network.nodes() if isinstance(n, Transceiver)}
+    fibers = {n.uid: n for n in network.nodes() if isinstance(n, Fiber)}
+    edfas = {n.uid: n for n in network.nodes() if isinstance(n, Edfa)}
 
     p = input_power
     p = db2lin(p) * 1e-3
@@ -75,11 +69,27 @@ def propagation(input_power, con_in, con_out, source, dest, network, eqpt):
     spacing = 50e9  # THz
     si = create_input_spectral_information(191.3e12, 191.3e12 + 79 * spacing, 0.15, 32e9, p, spacing)
 
-    source_node = next(transceivers[uid] for uid in transceivers if uid == source)
-    sink = next(transceivers[uid] for uid in transceivers if uid == dest)
-    path = dijkstra_path(network, source_node, sink)
+    # source_node = next(transceivers[uid] for uid in transceivers if uid == sim_path[0])
+    # sink = next(transceivers[uid] for uid in transceivers if uid == sim_path[-1])
+    # path = get_k_shortest_paths(network, source_node, sink, k_paths)[0]
 
+    path = []
+
+    for index, node in enumerate(sim_path):
+        path.append(transceivers[node])
+        if index + 1 < len(sim_path):
+            fiber_str = f"Fiber ({node} \u2192 {sim_path[index+1]})"
+            for uid in fibers:
+                if uid[0:len(fiber_str)] == fiber_str:
+                    path.append(fibers[uid])
+                    edfa = f"Edfa0_{uid}"
+                    fiber_neighbors = [n.uid for n in neighbors(network, fibers[uid])]
+                    if edfa in edfas and edfa in fiber_neighbors:
+                        path.append(edfas[edfa])
     for el in path:
         si = el(si)
 
-    return sink.snr
+    # print([i.uid for i in path])
+    print(np.mean(path[-1].snr))
+
+    return path[-1].snr
