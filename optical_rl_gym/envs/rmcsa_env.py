@@ -222,11 +222,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         Update network stats is used to create metrics for "throughput" & "compactness".
 
-        Parameters
-        ----------
-        core: int number of cores
-
-        Returns nothing """
+        :param core: int number of cores
+        """
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
         if self.current_time > 0:
@@ -253,12 +250,10 @@ class RMCSAEnv(OpticalNetworkEnv):
         """ Creates metrics for:
         Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
 
-        Parameters
-        ----------
-        core : int number of cores,
-        node1, node2 : str number of the node within the node_list
-
-        Returns nothing """
+        :param core : int number of cores,
+        :param node1: str number of node1 within the node_list
+        :param node2: str number of node2 within the node_list
+        """
 
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
@@ -371,15 +366,8 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         Method that determines if the path is free for the core, path, and initial_slot.
 
-        Parameters
-        ----------
-
-        core : int number of cores
-
-        Returns
-        -------
-
-        return: True/False
+        :param core : int number of cores
+        :return: True/False
         """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
@@ -490,12 +478,7 @@ def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
     """
     Algorithm for determining the shortest available first core first fit path
 
-    Parameters
-    ----------
-    env : OpenAI Gym object containing RMCSA environment
-
-    Returns
-    -------
+    :param env: OpenAI Gym object containing RMCSA environment
     :return: Cores, paths, and number of spectrum resources
     """
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
