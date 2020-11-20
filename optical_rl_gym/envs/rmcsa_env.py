@@ -180,7 +180,6 @@ class RMCSAEnv(OpticalNetworkEnv):
         return
 
     def _provision_path(self, core: int, path: Path, initial_slot, number_slots):
-        # usage
         if not self.is_path_free(core, path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
                                                                                      initial_slot + number_slots))
@@ -218,11 +217,11 @@ class RMCSAEnv(OpticalNetworkEnv):
             self._update_link_stats(service.core, service.route.node_list[i], service.route.node_list[i + 1])
         self.topology.graph['running_services'].remove(service)
 
-    def _update_network_stats(self, core):
+    def _update_network_stats(self, core: int):
         """
         Update network stats is used to create metrics for "throughput" & "compactness".
 
-        :param core: int number of cores
+        :param core: number of cores
         """
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
@@ -245,20 +244,18 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self.topology.graph['last_update'] = self.current_time
 
-    def _update_link_stats(self, core, node1: str, node2: str):
+    def _update_link_stats(self, core: int, node1: str, node2: str):
 
         """ Creates metrics for:
         Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
 
-        :param core : int number of cores,
-        :param node1: str number of node1 within the node_list
-        :param node2: str number of node2 within the node_list
+        :param core : number of cores,
+        :param node1: number of node1 within the node_list
+        :param node2: number of node2 within the node_list
         """
 
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
-
-        # Heuristic stats. Not mandatory for functionality of simulator.
 
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
