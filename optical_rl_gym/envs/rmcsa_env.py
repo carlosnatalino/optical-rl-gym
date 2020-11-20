@@ -371,15 +371,13 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         Method that determines if the path is free for the core, path, and initial_slot.
 
-        Parameters
-        ----------
+        :param core: Number of cores currently being used
+        :param path: Index of K shortest paths
+        :param initial_slot: The current frequency slot being used <-carlos pls double check
+        :param number_slots: The total number of slots
 
-        core : int number of cores
-
-        Returns
-        -------
-
-        return: True/False
+        :return: True/False
+        :rtype: bool
         """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
