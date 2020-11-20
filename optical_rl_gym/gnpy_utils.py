@@ -45,7 +45,7 @@ def topology_to_json(topology):
     return data
 
 
-def propagation(input_power, con_in, con_out, source, dest, network, eqpt, k_paths, sim_path):
+def propagation(input_power, con_in, con_out, network, sim_path, eqpt):
     """ Create network topology from JSON and outputs SNR based on inputs """
     build_network(network, eqpt, 0, 20)
 
@@ -84,12 +84,12 @@ def propagation(input_power, con_in, con_out, source, dest, network, eqpt, k_pat
                     path.append(fibers[uid])
                     edfa = f"Edfa0_{uid}"
                     fiber_neighbors = [n.uid for n in neighbors(network, fibers[uid])]
+                    # print([i for i in fiber_neighbors if 'Edfa' in i])
                     if edfa in edfas and edfa in fiber_neighbors:
                         path.append(edfas[edfa])
     for el in path:
         si = el(si)
 
     # print([i.uid for i in path])
-    print(np.mean(path[-1].snr))
 
     return path[-1].snr
