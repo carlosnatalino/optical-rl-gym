@@ -2,7 +2,6 @@ import json
 import os
 
 from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
-from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.network import build_network
 from gnpy.tools.json_io import load_equipment, network_from_json
@@ -70,7 +69,6 @@ def propagation(input_power, con_in, con_out, source, dest, network, eqpt):
     transceivers = {n.uid: n for n in network.nodes() if isinstance(n, Transceiver)}
 
     p = input_power
-    # p = db2lin(p) * 1e-3
     # values from GNPy test_propagation.py
     spacing = 50e9  # THz
     si = create_input_spectral_information(191.3e12, 191.3e12 + 79 * spacing, 0.15, 32e9, p, spacing)
