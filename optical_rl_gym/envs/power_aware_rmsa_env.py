@@ -10,7 +10,6 @@ from optical_rl_gym.utils import Service, Path
 from .optical_network_env import OpticalNetworkEnv
 from optical_rl_gym.gnpy_utils import propagation, topology_to_json
 from gnpy.tools.json_io import load_equipment, network_from_json
-from gnpy.core.utils import db2lin, lin2db
 
 
 class PowerAwareRMSA(OpticalNetworkEnv):
@@ -101,7 +100,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
                 sim_path = self.k_shortest_paths[self.service.source, self.service.destination][path].node_list
-                osnr = np.mean(propagation(launch_power, 1, 1, self.gnpy_network, sim_path, self.eqpt_library))
+                osnr = np.mean(propagation(launch_power, 1, 1, self.gnpy_network, sim_path, slots, self.eqpt_library))
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
@@ -443,7 +442,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
 
 def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
-    power = db2lin(5) * 1e-3
+    power = 5
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
