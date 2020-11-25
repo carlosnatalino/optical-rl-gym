@@ -100,7 +100,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
                 sim_path = self.k_shortest_paths[self.service.source, self.service.destination][path].node_list
-                osnr = np.mean(propagation(launch_power, 1, 1, self.gnpy_network, sim_path, slots, self.eqpt_library))
+                osnr = np.mean(propagation(launch_power, self.gnpy_network, sim_path, initial_slot, slots, self.eqpt_library))
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
