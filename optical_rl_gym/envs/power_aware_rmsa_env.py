@@ -89,7 +89,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, initial_slot, launch_power = action[0], action[1], action[2]
+        path, initial_slot, launch_power = action[0], action[1], action[2]  # Takes power from shortest_available_path_first_fit_fixed_power validation
         self.actions_output[path, initial_slot] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
@@ -105,7 +105,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
-                    self._provision_path(launch_power,
+                    self._provision_path(launch_power,  # implementation of power into provision_path
                                          self.k_shortest_paths[self.service.source, self.service.destination][path],
                                          initial_slot, slots)
                     self.service.accepted = True
@@ -197,7 +197,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self._update_link_stats(path.node_list[i], path.node_list[i + 1])
         self.topology.graph['running_services'].append(self.service)
         self.service.route = path
-        self.service.launch_power = launch_power
+        self.service.launch_power = launch_power    # Add power as a Service
         self.service.initial_slot = initial_slot
         self.service.number_slots = number_slots
         self._update_network_stats()
@@ -443,7 +443,13 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
 
 def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
-    power = 5
+    """
+    Validation to find shortest available path. Finds the first fit with a given fixed power.
+
+    :param env: The environment of the simulator
+    :return: action of iteration (path, spectrum resources, power)
+    """
+    power = 5   # Fixed power variable for validation method. Gets passed through simulator.
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
