@@ -39,7 +39,8 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                          seed=seed, allow_rejection=allow_rejection,
                          k_paths=k_paths)
         assert 'modulations' in self.topology.graph
-        self.eqpt_library = load_equipment('../examples/tests/data/eqpt_config.json')
+        # load gnpy equipment file and create network
+        self.eqpt_library = load_equipment('../examples/default_equipment_data/eqpt_config.json')
         self.gnpy_network = network_from_json(topology_to_json(self.topology), self.eqpt_library)
         # specific attributes for elastic optical networks
         self.bit_rate_requested = 0
