@@ -180,7 +180,6 @@ class RMCSAEnv(OpticalNetworkEnv):
         return
 
     def _provision_path(self, core: int, path: Path, initial_slot, number_slots):
-        # usage
         if not self.is_path_free(core, path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
                                                                                      initial_slot + number_slots))
@@ -218,15 +217,12 @@ class RMCSAEnv(OpticalNetworkEnv):
             self._update_link_stats(service.core, service.route.node_list[i], service.route.node_list[i + 1])
         self.topology.graph['running_services'].remove(service)
 
-    def _update_network_stats(self, core):
+    def _update_network_stats(self, core: int):
         """
         Update network stats is used to create metrics for "throughput" & "compactness".
 
-        Parameters
-        ----------
-        core: int number of cores
-
-        Returns nothing """
+        :param core: number of cores
+        """
         last_update = self.topology.graph['last_update']
         time_diff = self.current_time - last_update
         if self.current_time > 0:
@@ -248,22 +244,18 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self.topology.graph['last_update'] = self.current_time
 
-    def _update_link_stats(self, core, node1: str, node2: str):
+    def _update_link_stats(self, core: int, node1: str, node2: str):
 
         """ Creates metrics for:
         Individual node "utilization", overall "core_utilization", "external fragmentation", and "link_compactness".
 
-        Parameters
-        ----------
-        core : int number of cores,
-        node1, node2 : str number of the node within the node_list
-
-        Returns nothing """
+        :param core : number of cores,
+        :param node1: number of node1 within the node_list
+        :param node2: number of node2 within the node_list
+        """
 
         last_update = self.topology[node1][node2]['last_update']
         time_diff = self.current_time - self.topology[node1][node2]['last_update']
-
-        # Heuristic stats. Not mandatory for functionality of simulator.
 
         if self.current_time > 0:
             last_util = self.topology[node1][node2]['utilization']
@@ -371,15 +363,13 @@ class RMCSAEnv(OpticalNetworkEnv):
         """
         Method that determines if the path is free for the core, path, and initial_slot.
 
-        Parameters
-        ----------
+        :param core: Number of cores currently being used
+        :param path: Index of K shortest paths
+        :param initial_slot: The current frequency slot being used <-carlos pls double check
+        :param number_slots: The total number of slots
 
-        core : int number of cores
-
-        Returns
-        -------
-
-        return: True/False
+        :return: True/False
+        :rtype: bool
         """
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
@@ -490,12 +480,7 @@ def shortest_available_first_core_first_fit(env: RMCSAEnv) -> int:
     """
     Algorithm for determining the shortest available first core first fit path
 
-    Parameters
-    ----------
-    env : OpenAI Gym object containing RMCSA environment
-
-    Returns
-    -------
+    :param env: OpenAI Gym object containing RMCSA environment
     :return: Cores, paths, and number of spectrum resources
     """
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
