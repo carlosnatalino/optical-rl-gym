@@ -1,4 +1,5 @@
 from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
+from gnpy.core.utils import db2lin
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.network import build_network
 from networkx import neighbors
