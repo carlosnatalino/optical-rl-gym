@@ -8,7 +8,7 @@ will demonstrate on how to use the simulator in your algorithm.
 
 2. Copy the following template of code for your file depending on which environment you are gonna use
 
-##Template for PA-RMSA
+## Template for PA-RMSA
 ```python
 import gym
 import pickle
@@ -52,7 +52,7 @@ print('Request blocking:', (init_env.episode_services_processed - init_env.episo
      / init_env.episode_services_processed)
 
 ```
-##Template for RMCSA
+## Template for RMCSA
 ```python
 import gym
 import pickle
@@ -101,7 +101,7 @@ for key, value in env_sap.core_utilization.items():
     print('Utilization per core ({}): {}'.format(key, np.mean(env_sap.core_utilization[key])))
 ```
 
-##Template for RMSA/RWA
+## Template for RMSA/RWA
 ```python
 import gym
 from optical_rl_gym.utils import evaluate_heuristic
@@ -154,7 +154,7 @@ print('Rnd:', mean_reward_rnd, std_reward_rnd)
 
 ```
 
-##Template for QoSConstrainedRA
+## Template for QoSConstrainedRA
 ```python
 import gym
 import optical_rl_gym
@@ -207,7 +207,7 @@ print('Rnd:', mean_reward_rnd, std_reward_rnd)
 ```
 
 
-##Template for DeepRMSA
+## Template for DeepRMSA
 ```python
 import gym
 from optical_rl_gym.utils import evaluate_heuristic
