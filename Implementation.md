@@ -32,6 +32,7 @@ with open(f'../examples/topologies/germany50_eon_gnpy_5-paths.h5', 'rb') as f:
 
 #environment arguments for the simulation
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25, episode_length=episode_length, num_spectrum_resources=64)
+init_env = gym.make('PowerAwareRMSA-v0', **env_args)
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
@@ -43,9 +44,8 @@ class Algorithm():
 
 
 # Initial Metrics for Environment
-init_env = gym.make('PowerAwareRMSA-v0', **env_args)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, "algorithm_here", n_eval_episodes=episodes)
-print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
+mean_reward, std_reward = evaluate_heuristic(init_env, "algorithm_here", n_eval_episodes=episodes)
+print('FF:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward:>7.4f}')
 print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned)
      / init_env.episode_bit_rate_requested)
 print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted)
@@ -75,7 +75,7 @@ with open(f'../examples/topologies/nsfnet_chen_eon_5-paths.h5', 'rb') as f:
 #environment arguments for the simulation
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
                 episode_length=episode_length, num_spectrum_resources=64, num_spatial_resources=num_spatial_resources)
-env_sap = gym.make('RMCSA-v0', **env_args)
+init_env = gym.make('RMCSA-v0', **env_args)
 
 #Your algorithm code will go in here
 class Algorithm():
@@ -84,21 +84,21 @@ class Algorithm():
 		pass
 
 
-mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sap, 'algorithm_here', n_eval_episodes=episodes)
+mean_reward, std_reward = evaluate_heuristic(init_env, 'algorithm_here', n_eval_episodes=episodes)
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
 # Initial Metrics for Environment
-print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
-print('Bit rate blocking:', (env_sap.episode_bit_rate_requested - env_sap.episode_bit_rate_provisioned) / env_sap.episode_bit_rate_requested)
-print('Request blocking:', (env_sap.episode_services_processed - env_sap.episode_services_accepted) / env_sap.episode_services_processed)
+print('FF:'.ljust(8), f'{mean_reward:.4f}  {std_reward:.4f}')
+print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
+print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
 
 # Additional Metrics For Environment
-print('Throughput:', env_sap.topology.graph['throughput'])
-print('Compactness:', env_sap.topology.graph['compactness'])
-print('Resource Utilization:', np.mean(env_sap.utilization))
-for key, value in env_sap.core_utilization.items():
-    print('Utilization per core ({}): {}'.format(key, np.mean(env_sap.core_utilization[key])))
+print('Throughput:', init_env.topology.graph['throughput'])
+print('Compactness:', init_env.topology.graph['compactness'])
+print('Resource Utilization:', np.mean(init_env.utilization))
+for key, value in init_env.core_utilization.items():
+    print('Utilization per core ({}): {}'.format(key, np.mean(init_env.core_utilization[key])))
 ```
 
 ## Template for RMSA/RWA
@@ -135,22 +135,21 @@ class Algorithm():
 	def algorithm_code(self):
 		pass
 
-
-init_env = gym.make('RMSA-v0', **env_args)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, "algorithm_here", n_eval_episodes=episodes)
-
-print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
+print('FF:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 
 # Initial Metrics for RMSA Environment
-print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
-print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
-print(init_env.topology.graph['throughput'])
+init_env_rmsa = gym.make('RMSA-v0', **env_args)
+mean_reward, std_reward = evaluate_heuristic(init_env_rmsa, "algorithm_here", n_eval_episodes=episodes)
+
+print('Bit rate blocking:', (init_env_rmsa.episode_bit_rate_requested - init_env_rmsa.episode_bit_rate_provisioned) / init_env_rmsa.episode_bit_rate_requested)
+print('Request blocking:', (init_env_rmsa.episode_services_processed - init_env_rmsa.episode_services_accepted) / init_env_rmsa.episode_services_processed)
+print(init_env_rmsa.topology.graph['throughput'])
 exit(0)
 
 # Initial Metrics for RwA Environment
-env_rnd = gym.make('RWA-v0', **env_args)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, 'algorithm_here', n_eval_episodes=episodes)
-print('Rnd:', mean_reward_rnd, std_reward_rnd)
+init_env_rwa = gym.make('RWA-v0', **env_args)
+mean_reward, std_reward = evaluate_heuristic(init_env_rwa, 'algorithm_here', n_eval_episodes=episodes)
+print('Rnd:', mean_reward, std_reward)
 
 ```
 
@@ -200,9 +199,9 @@ class Algorithm():
 
 
 # Initial Metrics for QoSRA Environment
-env_rnd = gym.make('QoSConstrainedRA-v0', **env_args)
-mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, "algorithm_here", n_eval_episodes=episodes)
-print('Rnd:', mean_reward_rnd, std_reward_rnd)
+init_env = gym.make('QoSConstrainedRA-v0', **env_args)
+mean_reward, std_reward = evaluate_heuristic(init_env, "algorithm_here", n_eval_episodes=episodes)
+print('FF:', mean_reward, std_reward)
 
 ```
 
@@ -248,9 +247,9 @@ class Algorithm():
 
 
 # Initial Metrics for DeepRMSA Environment
-env_sp = gym.make('DeepRMSA-v0', **env_args)
-mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sp, "algorithm_here", n_eval_episodes=episodes)
-print('SP:'.ljust(5), f'{mean_reward_sp:.4f}  {std_reward_sp:>7.4f}')
+init_env = gym.make('DeepRMSA-v0', **env_args)
+mean_reward, std_reward = evaluate_heuristic(init_env, "algorithm_here", n_eval_episodes=episodes)
+print('FF:'.ljust(5), f'{mean_reward:.4f}  {std_reward:>7.4f}')
 
 ```
 
