@@ -64,10 +64,10 @@ modulations = list()
 # modulation: string description
 # capacity: Gbps
 # maximum_distance: km
-modulations.append({'modulation': 'BPSK', 'capacity': 12.5, 'maximum_length': 100000})
-modulations.append({'modulation': 'QPSK', 'capacity': 25., 'maximum_length': 2000})
-modulations.append({'modulation': '8QAM', 'capacity': 37.5, 'maximum_length': 1250})
-modulations.append({'modulation': '16QAM', 'capacity': 50., 'maximum_length': 625})
+modulations.append({'modulation': 'BPSK', 'capacity': 12.5, 'maximum_length': 100000, 'minimum_osnr': 12.6})
+modulations.append({'modulation': 'QPSK', 'capacity': 25., 'maximum_length': 2000, 'minimum_osnr': 12.6})
+modulations.append({'modulation': '8QAM', 'capacity': 37.5, 'maximum_length': 1250, 'minimum_osnr': 18.6})
+modulations.append({'modulation': '16QAM', 'capacity': 50., 'maximum_length': 625, 'minimum_osnr': 22.4})
 
 
 # other setup:
@@ -81,9 +81,11 @@ modulations.append({'modulation': '16QAM', 'capacity': 50., 'maximum_length': 62
 k_paths = 5
 
 # The paper uses K=5 and J=1
-topology = get_topology('./topologies/nsfnet_chen.txt', 'NSFNET', modulations, k_paths=k_paths)
+# topology = get_topology('./topologies/nsfnet_chen.txt', 'NSFNET', modulations, k_paths=k_paths)
+topology = get_topology('./topologies/germany50.xml', 'Germany50', modulations, k_paths=k_paths)
 
-with open(f'./topologies/nsfnet_chen_eon_{k_paths}-paths.h5', 'wb') as f:
+# with open(f'./topologies/nsfnet_chen_eon_{k_paths}-paths.h5', 'wb') as f:
+with open(f'./topologies/germany50_eon_gnpy_{k_paths}-paths.h5', 'wb') as f:
     pickle.dump(topology, f)
 
 print('done for', topology)

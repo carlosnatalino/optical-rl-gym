@@ -24,3 +24,9 @@ register(
     id='RMCSA-v0',
     entry_point='optical_rl_gym.envs:RMCSAEnv',
 )
+
+register(
+
+    id='PowerAwareRMSA-v0',
+    entry_point='optical_rl_gym.envs:PowerAwareRMSA',
+)
