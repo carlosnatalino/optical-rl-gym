@@ -38,15 +38,19 @@ mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_e
 print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
 print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
+print('Total power:', 10 * np.log10(init_env.total_power))
+print('Average power:', 10 * np.log10(init_env.total_power / init_env.services_accepted))
 
 # Shortest Available Path First Fit Fixed Power
-init_env = gym.make('PowerAwareRMSA-v0', **env_args)
-env_rnd = SimpleMatrixObservation(init_env)
-mean_reward_sapfffp, std_reward_sapfffp = evaluate_heuristic(env_rnd, shortest_available_path_first_fit_fixed_power, n_eval_episodes=episodes)
+env_sap_ff_fp = gym.make('PowerAwareRMSA-v0', **env_args)
+mean_reward_sapfffp, std_reward_sapfffp = evaluate_heuristic(env_sap_ff_fp, shortest_available_path_first_fit_fixed_power, n_eval_episodes=episodes)
 print('SAP-FF-FP:'.ljust(8), f'{mean_reward_sapfffp:.4f}  {std_reward_sapfffp:>7.4f}')
-print('Bit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
-print('Request blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
-print('Throughput:', init_env.topology.graph['throughput'])
+print('Bit rate blocking:', (env_sap_ff_fp.episode_bit_rate_requested - env_sap_ff_fp.episode_bit_rate_provisioned) / env_sap_ff_fp.episode_bit_rate_requested)
+print('Request blocking:', (env_sap_ff_fp.episode_services_processed - env_sap_ff_fp.episode_services_accepted) / env_sap_ff_fp.episode_services_processed)
+print('Throughput:', env_sap_ff_fp.topology.graph['throughput'])
+# convert total_power metric back into dB
+print('Total power:', 10 * np.log10(env_sap_ff_fp.total_power))
+print('Average power:', 10 * np.log10(env_sap_ff_fp.total_power / env_sap_ff_fp.services_accepted))
 
 # env_sp = gym.make('PowerAwareRMSA-v0', **env_args)
 # mean_reward_sp, std_reward_sp = evaluate_heuristic(env_sp, shortest_path_first_fit, n_eval_episodes=episodes)
