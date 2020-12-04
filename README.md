@@ -92,6 +92,7 @@ We provide a set of [examples](./examples).
 
 - Introductory paper `The Optical RL-Gym: an open-source toolkit for applying reinforcement learning in optical networks` (paper and video to be published soon).
 - [List of publications using Optical RL-Gym](./docs/PUBLICATIONS.md)
+- [How to implement your own algorithm](Implementation.md)
 
 <a href="#contributors"><h2>Contributors</h2></a>
 
