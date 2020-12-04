@@ -83,11 +83,11 @@ class Algorithm():
 init_env = gym.make('RMSA-v0', **env_args)
 mean_reward, std_reward = evaluate_heuristic(init_env, $ALGORITHM_METHOD, n_eval_episodes=episodes)
 
-# Initial Metrics for RwA Environment - Remove as necessarry
+# Initial Metrics for RWA Environment - Remove as necessarry
 init_env = gym.make('RWA-v0', **env_args)
 mean_reward, std_reward = evaluate_heuristic(init_env, $ALGORITHM_METHOD, n_eval_episodes=episodes)
 
-# Initial Metrics for PA-RMsA Environment - Remove as necessarry
+# Initial Metrics for PA-RMSA Environment - Remove as necessarry
 init_env = gym.make('PowerAwareRMSA-v0', **env_args)
 mean_reward, std_reward = evaluate_heuristic(init_env, $ALGORITHM_METHOD, n_eval_episodes=episodes)
 
