@@ -4,7 +4,7 @@ import heapq
 import random
 import numpy as np
 import networkx as nx
-from optical_rl_gym.utils import Service, Path, get_k_shortest_paths, get_path_weight
+from optical_rl_gym.utils import Service, Route, get_k_shortest_paths, get_path_weight
 
 
 class OpticalNetworkEnv(gym.Env):
@@ -68,7 +68,7 @@ class OpticalNetworkEnv(gym.Env):
                         lengths = [get_path_weight(self.topology, path) for path in paths]
                         objs = []
                         for path, length in zip(paths, lengths):
-                            objs.append(Path(idp, path, length))
+                            objs.append(Route(idp, path, length))
                             idp += 1
                         k_shortest_paths[n1, n2] = objs
                         k_shortest_paths[n2, n1] = objs

@@ -6,7 +6,7 @@ import logging
 import functools
 import numpy as np
 
-from optical_rl_gym.utils import Service, Path
+from optical_rl_gym.utils import Service, Route
 from .optical_network_env import OpticalNetworkEnv
 from optical_rl_gym.gnpy_utils import propagation, topology_to_json, load_files
 
@@ -92,27 +92,27 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        path, modulation, initial_slot, launch_power = action[0], action[1], action[2], action[3]  # Takes power from shortest_available_path_first_fit_fixed_power validation
-        self.actions_output[path, modulation, initial_slot] += 1
-        if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
-            slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][path])
+        route, modulation, initial_slot, launch_power = action[0], action[1], action[2], action[3]  # Takes power from shortest_available_path_first_fit_fixed_power validation
+        self.actions_output[route, modulation, initial_slot] += 1
+        if route < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a route
+            slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][route])
             self.logger.debug(
-                '{} processing action {} path {} and initial slot {} for {} slots'.format(self.service.service_id,
-                                                                                          action, path, initial_slot,
+                '{} processing action {} route {} and initial slot {} for {} slots'.format(self.service.service_id,
+                                                                                          action, route, initial_slot,
                                                                                           slots))
-            if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][path],
+            if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][route],
                                  initial_slot, slots):
-                # compute OSNR and check if it's greater or equal to min_osnr, only then provision path, else service_accepted=False
-                sim_path = self.k_shortest_paths[self.service.source, self.service.destination][path].node_list
+                # compute OSNR and check if it's greater or equal to min_osnr, only then provision route, else service_accepted=False
+                sim_path = self.k_shortest_paths[self.service.source, self.service.destination][route].node_list
                 osnr = np.mean(propagation(launch_power, self.gnpy_network, sim_path, initial_slot, slots, self.eqpt_library))
-                min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][path].best_modulation[
+                min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][route].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
                     self._provision_path(modulation, launch_power,  # implementation of power into provision_path
-                                         self.k_shortest_paths[self.service.source, self.service.destination][path],
+                                         self.k_shortest_paths[self.service.source, self.service.destination][route],
                                          initial_slot, slots)
                     self.service.accepted = True
-                    self.actions_taken[path, modulation, initial_slot] += 1
+                    self.actions_taken[route, modulation, initial_slot] += 1
                     self._add_release(self.service)
                 else:
                     self.service.accepted = False
@@ -184,7 +184,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, modulation, launch_power, path: Path, initial_slot, number_slots):
+    def _provision_path(self, modulation, launch_power, path: Route, initial_slot, number_slots):
         # usage
         if not self.is_path_free(path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
@@ -344,14 +344,14 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         initial_slot = action % self.num_spectrum_resources
         return path, initial_slot
 
-    def get_number_slots(self, path: Path) -> int:
+    def get_number_slots(self, path: Route) -> int:
         """
         Method that computes the number of spectrum slots necessary to accommodate the service request into the path.
         The method already adds the guardband.
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, path: Route, initial_slot: int, number_slots: int) -> bool:
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
@@ -363,7 +363,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         return True
 
-    def get_available_slots(self, path: Path):
+    def get_available_slots(self, path: Route):
         available_slots = functools.reduce(np.multiply,
                                            self.topology.graph["available_slots"][
                                            [self.topology[path.node_list[i]][path.node_list[i + 1]]['id']

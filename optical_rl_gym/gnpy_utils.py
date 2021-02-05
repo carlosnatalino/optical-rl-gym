@@ -1,8 +1,11 @@
-from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
-from gnpy.core.utils import db2lin, lin2db, automatic_nch
-from gnpy.core.info import create_input_spectral_information
-from gnpy.core.network import build_network
-from gnpy.tools.json_io import load_equipment, network_from_json
+try:
+    from gnpy.core.elements import Transceiver, Fiber, Edfa, Roadm
+    from gnpy.core.utils import db2lin, lin2db, automatic_nch
+    from gnpy.core.info import create_input_spectral_information
+    from gnpy.core.network import build_network
+    from gnpy.tools.json_io import load_equipment, network_from_json
+except:
+    pass
 from networkx import neighbors
 
 

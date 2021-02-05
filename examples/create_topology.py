@@ -4,7 +4,7 @@ It facilitates when it comes to training a RL agent.
 """
 
 import optical_rl_gym
-from optical_rl_gym.utils import Path
+from optical_rl_gym.utils import Route
 
 from itertools import islice
 import numpy as np
@@ -35,7 +35,7 @@ def get_topology(file_name, topology_name, k_paths=5):
                 lengths = [get_path_weight(topology, path) for path in paths]
                 objs = []
                 for path, length in zip(paths, lengths):
-                    objs.append(Path(idp, path, length))
+                    objs.append(Route(idp, path, length))
                     print(idp, length, path)
                     idp += 1
                 k_shortest_paths[n1, n2] = objs

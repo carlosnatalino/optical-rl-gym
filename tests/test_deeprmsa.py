@@ -1,3 +1,4 @@
+import os
 import gym
 from optical_rl_gym.envs.deeprmsa_env import shortest_path_first_fit, shortest_available_path_first_fit
 from optical_rl_gym.utils import evaluate_heuristic, random_policy
@@ -17,7 +18,7 @@ policies = []
 
 topology_name = 'nsfnet_chen_eon'
 k_paths = 5
-with open(f'../examples/topologies/{topology_name}_{k_paths}-paths.h5', 'rb') as f:
+with open(os.path.join('..', 'examples', 'topologies', f'{topology_name}_{k_paths}-paths.h5'), 'rb') as f:
     topology = pickle.load(f)
 
 node_request_probabilities = np.array([0.01801802, 0.04004004, 0.05305305, 0.01901902, 0.04504505,

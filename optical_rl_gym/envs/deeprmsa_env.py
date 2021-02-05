@@ -2,7 +2,6 @@ import gym
 import numpy as np
 
 from .rmsa_env import RMSAEnv
-from .optical_network_env import OpticalNetworkEnv
 
 
 class DeepRMSAEnv(RMSAEnv):
@@ -36,12 +35,12 @@ class DeepRMSAEnv(RMSAEnv):
         self.reset(only_episode_counters=False)
 
     def step(self, action: int):
-        if action < self.k_paths * self.j:  # action is for assigning a path
-            path, block = self._get_path_block_id(action)
+        if action < self.k_paths * self.j:  # action is for assigning a route
+            route, block = self._get_route_block_id(action)
 
-            initial_indices, lengths = self.get_available_blocks(path)
+            initial_indices, lengths = self.get_available_blocks(route)
             if block < len(initial_indices):
-                return super().step([path, initial_indices[block]])
+                return super().step([route, initial_indices[block]])
             else:
                 return super().step([self.k_paths, self.num_spectrum_resources])
         else:
@@ -55,9 +54,9 @@ class DeepRMSAEnv(RMSAEnv):
         source_destination_tau[0, min_node] = 1
         source_destination_tau[1, max_node] = 1
         spectrum_obs = np.full((self.k_paths, 2 * self.j + 3), fill_value=-1.)
-        for idp, path in enumerate(self.k_shortest_paths[self.service.source, self.service.destination]):
-            available_slots = self.get_available_slots(path)
-            num_slots = self.get_number_slots(path)
+        for idp, route in enumerate(self.k_shortest_paths[self.service.source, self.service.destination]):
+            available_slots = self.get_available_slots(route)
+            num_slots = self.get_number_slots(route)
             initial_indices, lengths = self.get_available_blocks(idp)
 
             for idb, (initial_index, length) in enumerate(zip(initial_indices, lengths)):
@@ -86,10 +85,10 @@ class DeepRMSAEnv(RMSAEnv):
     def reset(self, only_episode_counters=True):
         return super().reset(only_episode_counters=only_episode_counters)
 
-    def _get_path_block_id(self, action: int) -> (int, int):
-        path = action // self.j
+    def _get_route_block_id(self, action: int) -> (int, int):
+        route = action // self.j
         block = action % self.j
-        return path, block
+        return route, block
 
 
 def shortest_path_first_fit(env: DeepRMSAEnv) -> int:

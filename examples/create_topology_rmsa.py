@@ -1,5 +1,5 @@
 import optical_rl_gym
-from optical_rl_gym.utils import Path
+from optical_rl_gym.utils import Route
 
 from itertools import islice
 import numpy as np
@@ -42,7 +42,7 @@ def get_topology(file_name, topology_name, modulations, k_paths=5):
                 selected_modulations = [get_modulation_format(length, modulations) for length in lengths]
                 objs = []
                 for path, length, modulation in zip(paths, lengths, selected_modulations):
-                    objs.append(Path(idp, path, length, best_modulation=modulation))
+                    objs.append(Route(idp, path, length, best_modulation=modulation))
                     print('\t', idp, length, modulation, path)
                     idp += 1
                 k_shortest_paths[n1, n2] = objs

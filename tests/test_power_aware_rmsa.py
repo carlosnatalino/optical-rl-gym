@@ -1,3 +1,4 @@
+import os
 import gym
 from optical_rl_gym.envs.power_aware_rmsa_env import shortest_path_first_fit, shortest_available_path_first_fit_fixed_power, \
     least_loaded_path_first_fit, SimpleMatrixObservation
@@ -22,7 +23,7 @@ policies = []
 # topology_name = 'gbn'
 # topology_name = 'nobel-us'
 # topology_name = 'germany50'
-with open(f'../examples/topologies/germany50_eon_gnpy_5-paths.h5', 'rb') as f:
+with open(os.path.join('..', 'examples', 'topologies', 'germany50_eon_gnpy_5-paths.h5'), 'rb') as f:
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,

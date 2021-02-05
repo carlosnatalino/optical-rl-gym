@@ -103,7 +103,7 @@ exit(0)
 ```python
 import gym
 import optical_rl_gym
-from optical_rl_gym.utils import Path
+from optical_rl_gym.utils import Route
 from optical_rl_gym.utils import evaluate_heuristic
 
 import pickle

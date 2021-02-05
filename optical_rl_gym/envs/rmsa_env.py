@@ -7,7 +7,7 @@ import functools
 import numpy as np
 from collections import defaultdict
 
-from optical_rl_gym.utils import Service, Path
+from optical_rl_gym.utils import Service, Route
 from .optical_network_env import OpticalNetworkEnv
 
 
@@ -252,7 +252,7 @@ class RMSAEnv(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, path: Path, initial_slot, number_slots):
+    def _provision_path(self, path: Route, initial_slot, number_slots):
         # usage
         if not self.is_path_free(path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
@@ -424,14 +424,14 @@ class RMSAEnv(OpticalNetworkEnv):
         initial_slot = action % self.num_spectrum_resources
         return path, initial_slot
 
-    def get_number_slots(self, path: Path) -> int:
+    def get_number_slots(self, path: Route) -> int:
         """
         Method that computes the number of spectrum slots necessary to accommodate the service request into the path.
         The method already adds the guardband.
         """
         return math.ceil(self.service.bit_rate / path.best_modulation['capacity']) + 1
 
-    def is_path_free(self, path: Path, initial_slot: int, number_slots: int) -> bool:
+    def is_path_free(self, path: Route, initial_slot: int, number_slots: int) -> bool:
         if initial_slot + number_slots > self.num_spectrum_resources:
             # logging.debug('error index' + env.parameters.rsa_algorithm)
             return False
@@ -442,7 +442,7 @@ class RMSAEnv(OpticalNetworkEnv):
                 return False
         return True
 
-    def get_available_slots(self, path: Path):
+    def get_available_slots(self, path: Route):
         available_slots = functools.reduce(np.multiply,
             self.topology.graph["available_slots"][[self.topology[path.node_list[i]][path.node_list[i + 1]]['id']
                                                     for i in range(len(path.node_list) - 1)], :])
@@ -595,7 +595,7 @@ class PathOnlyFirstFitAction(gym.ActionWrapper):
             for initial_slot in range(0, self.env.topology.graph['num_spectrum_resources'] - num_slots):
                 if self.env.is_path_free(self.env.k_shortest_paths[self.env.service.source,
                                                                    self.env.service.destination][action],
-                                        initial_slot, num_slots):
+                                         initial_slot, num_slots):
                     return [action, initial_slot]
         return [self.env.topology.graph['k_paths'], self.env.topology.graph['num_spectrum_resources']]
 

@@ -3,10 +3,10 @@ import networkx as nx
 import numpy as np
 
 
-class Path:
+class Route:
 
-    def __init__(self, path_id, node_list, length, best_modulation=None):
-        self.path_id = path_id
+    def __init__(self, route_id, node_list, length, best_modulation=None):
+        self.path_id = route_id
         self.node_list = node_list
         self.length = length
         self.best_modulation = best_modulation

@@ -1,6 +1,7 @@
+import os
 import gym
 import optical_rl_gym
-from optical_rl_gym.utils import Path
+from optical_rl_gym.utils import Route
 from optical_rl_gym.envs.rwa_env import shortest_path, shortest_available_path, least_loaded_path
 from optical_rl_gym.utils import evaluate_heuristic, random_policy
 
@@ -23,10 +24,11 @@ policies = []
 # topology_name = 'gbn'
 # topology_name = 'nobel-us'
 # topology_name = 'germany50'
-with open(f'../examples/topologies/nsfnet_chen_5-paths.h5', 'rb') as f:
+with open(os.path.join('..', 'examples', 'topologies', 'nsfnet_chen_5-paths.h5'), 'rb') as f:
     topology = pickle.load(f)
 
-env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25, episode_length=episode_length)
+env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
+                episode_length=episode_length)
 
 env_rnd = gym.make('RWA-v0', **env_args)
 mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_eval_episodes=episodes)
