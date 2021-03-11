@@ -28,6 +28,16 @@ def topology_to_json(topology):
                                      }
                                  },
                                  "type": "Transceiver"})
+        data["elements"].append({"uid": j,
+                                 "metadata": {
+                                     "location": {
+                                        "city": "",
+                                        "region": "",
+                                        "latitude": i,
+                                        "longitude": i
+                                     }
+                                 },
+                                 "type": "Roadm"})
     for node in topology.adj:
         for connected_node in topology.adj[node]:
             data["elements"].append({"uid": f"Fiber ({node} \u2192 {connected_node})",
@@ -63,19 +73,23 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt):
         num_slots: number of slots in service
         eqpt: equipment library for GNPy """
 
+    print("num_slots: " + num_slots)
+
     # Values to create Spectral Information object
     spacing = 12.5e9
     min_freq = 195942783006536 + initial_slot * spacing
-    max_freq = min_freq + (num_slots - 1) * spacing
+    max_freq = min_freq + num_slots * spacing
     p = input_power
     p = db2lin(p) * 1e-3
     si = create_input_spectral_information(min_freq, max_freq, 0.15, 32e9, p, spacing)
 
     p_total_db = input_power + lin2db(automatic_nch(min_freq, max_freq, spacing))
+    # print(p_total_db, end=':')
     build_network(network, eqpt, input_power, p_total_db)
 
     # Store network elements
     transceivers = {n.uid: n for n in network.nodes() if isinstance(n, Transceiver)}
+    roadms = {n.uid: n for n in network.nodes() if isinstance(n, Roadm)}
     fibers = {n.uid: n for n in network.nodes() if isinstance(n, Fiber)}
     edfas = {n.uid: n for n in network.nodes() if isinstance(n, Edfa)}
 
@@ -83,8 +97,12 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt):
     path = []
 
     for index, node in enumerate(sim_path):
-        # add transceiver to path
-        path.append(transceivers[node])
+        # add roadm to path
+        if index == len(sim_path) - 1 or index == 0:
+            path.append(transceivers[node])
+        else:
+            path.append(roadms[node])
+
         # add fiber connecting transceivers to path, unless source transceiver is last in path
         if index + 1 < len(sim_path):
             fiber_str = f"Fiber ({node} \u2192 {sim_path[index+1]})"
@@ -103,5 +121,7 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt):
         si = el(si)
 
     destination_node = path[-1]
+
+    # print(destination_node.snr, end=":")
 
     return destination_node.snr
