@@ -42,6 +42,8 @@ class Service:
         msg += '' if self.service_class is None else f'cl: {self.service_class}, '
         return f'Serv. {self.service_id} ({self.source} -> {self.destination})' + msg
 
+class Path:
+    """Dummy Class"""
 
 def start_environment(env, steps):
     done = True

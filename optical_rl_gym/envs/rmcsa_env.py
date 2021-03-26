@@ -25,6 +25,31 @@ class RMCSAEnv(OpticalNetworkEnv):
                  mean_service_holding_time=10800.0,
                  num_spectrum_resources=100,
                  num_spatial_resources=3,  # number of cores - 3, 7, 11, 22
+
+                 modulation_formats=np.array([
+                     {  # BPSK
+                         'mod_factor': 1,
+                         'snr_min': 4.2,
+                         'inband_xt': -14
+                     },  # BPSK
+                     {  # QPSK
+                         'mod_factor': 2,
+                         'snr_min': 7.2,
+                         'inband_xt': -17
+                     },  # QPSK
+                     {  # 16QAM
+                         'mod_factor': 4,
+                         'snr_min': 13.9,
+                         'inband_xt': -23
+                     },  # 16QAM
+                     {  # 64QAM
+                         'mod_factor': 6,
+                         'snr_min': 19.8,
+                         'inband_xt': -29
+                     },  # 64QAM
+                 ]),
+                 worst_xt=None,
+
                  node_request_probabilities=None,
                  bit_rate_lower_bound=25,
                  bit_rate_higher_bound=100,
@@ -56,6 +81,18 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self.num_spatial_resources = num_spatial_resources  # number of cores
 
+        self.modulation_formats = modulation_formats
+
+        if worst_xt is None:
+            self.worst_xt = _worst_xt_by_core(num_spatial_resources)
+        else:
+            self.worst_xt = worst_xt
+
+        # Adding a 4db penalty margin as most operators do (4 dB in our case) to both ASE and XT limits values
+        for format in self.modulation_formats:
+            format['inband_xt'] += 4
+        self.worst_xt += 4
+
         self.spectrum_slots_allocation = np.full((self.num_spatial_resources, self.topology.number_of_edges(),
                                                   self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
@@ -81,12 +118,12 @@ class RMCSAEnv(OpticalNetworkEnv):
                                                self.num_spectrum_resources + 1),
                                               dtype=int)
         self.action_space = gym.spaces.MultiDiscrete((self.k_paths + self.reject_action,
+                                                      len(self.modulation_formats),
                                                       self.num_spatial_resources + self.reject_action,
-                                                     self.num_spectrum_resources + self.reject_action))
-        self.observation_space = gym.spaces.Dict(
-            {'topology': gym.spaces.Discrete(10),
-             'current_service': gym.spaces.Discrete(10)}
-        )
+                                                      self.num_spectrum_resources + self.reject_action))
+        self.observation_space = gym.spaces.Dict({'topology': gym.spaces.Discrete(10),
+             'current_service': gym.spaces.Discrete(10)
+        })
         self.action_space.seed(self.rand_seed)
         self.observation_space.seed(self.rand_seed)
 
@@ -100,18 +137,39 @@ class RMCSAEnv(OpticalNetworkEnv):
             self.reset(only_counters=False)
 
     def step(self, action: [int]):
-        route, core, initial_slot = action[0], action[1], action[2]
+        # Compute statistics for analysis
+        route, modulation, core, initial_slot = action[0], action[1], action[2], action[3]
+
+        # ???
         self.actions_output[route, core, initial_slot] += 1
-        if route < self.k_paths and core < self.num_spatial_resources and initial_slot < self.num_spectrum_resources:
+
+        # Check if the decision that was passed is valid
+        if route < self.k_paths and \
+                core < self.num_spatial_resources and \
+                initial_slot < self.num_spectrum_resources:
+
             slots = self.get_number_slots(self.k_shortest_paths[self.service.source, self.service.destination][route])
+
             self.logger.debug('{} processing action {} route {} and initial slot {} for {} slots'.format(self.service.service_id, action, route, initial_slot, slots))
             if self.is_path_free(self.k_shortest_paths[self.service.source, self.service.destination][route], core,
                                  initial_slot, slots):
-                self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][route], core,
-                                     initial_slot, slots)
-                self.service.accepted = True
-                self.actions_taken[route, core, initial_slot] += 1
-                self._add_release(self.service)
+
+                # The length of the path that was chosen by the agent
+                path_length = self.k_shortest_paths[self.service.source, self.service.destination][route].length
+
+                # Note for future: Wether or not this goes before or after is_path_free depends on which is faster
+                # Check  that the chosen path length is viable considering crosstalk
+                if self._crosstalk_is_acceptable(modulation, path_length):
+
+                    # Set the resources that were free to "used"
+                    self._provision_path(self.k_shortest_paths[self.service.source, self.service.destination][route], core,
+                                         initial_slot, slots)
+                    # More statistics
+                    self.service.accepted = True
+                    self.actions_taken[route, core, initial_slot] += 1
+
+                    # Schedule the event for the resources to leave the network (after amount of time)
+                    self._add_release(self.service)
             else:
                 self.service.accepted = False
         else:
@@ -120,6 +178,7 @@ class RMCSAEnv(OpticalNetworkEnv):
         if not self.service.accepted:
             self.actions_taken[self.k_paths, self.num_spatial_resources, self.num_spectrum_resources] += 1
 
+        # More statistics
         self.services_processed += 1
         self.episode_services_processed += 1
         self.bit_rate_requested += self.service.bit_rate
@@ -127,7 +186,9 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         self.topology.graph['services'].append(self.service)
 
+        # Get the value of the action
         reward = self.reward()
+        # Summarize computed statistics
         info = {
                    'service_blocking_rate': (self.services_processed - self.services_accepted) / self.services_processed,
                    'episode_service_blocking_rate': (self.episode_services_processed - self.episode_services_accepted) / self.episode_services_processed,
@@ -138,6 +199,41 @@ class RMCSAEnv(OpticalNetworkEnv):
         self._new_service = False
         self._next_service()
         return self.observation(), reward, self.episode_services_processed == self.episode_length, info
+
+
+    def _crosstalk_is_acceptable(self, current_modulation, path_length) -> bool:
+        """
+        Checks that the crosstalk for the given modulation is within the maximum calculated for that format
+        """
+
+        modulation = self.modulation_formats[current_modulation]
+
+
+        average_power=1 # Average power used (in mW - milliWatts)
+        nf_db=5.5  # noise factor of the amplifiers [dB]
+        nf = 10.0 ** (nf_db / 10.0)
+
+        amp_spam=100  # distance between amplifiers [km]
+        amp_gain_db = 20  # gain on the amplifiers [dB]
+        amp_gain = 10.0 ** (amp_gain_db / 10.0)
+
+        lambda_=1550  # wavelength [nm]
+        h = 6.626068e-34  # Plank's constant
+        f_hz = 2.99e8 / (lambda_ * 1e-9)  # signal frequency [Hz]
+
+        # we consider +2dB as the margin to make sure the channel works
+        SNR_min_calc = 10 ** ((modulation['snr_min'] + 2) / 10)  # +2 to to compensate oscilation and convert
+
+        lmax_snr = (average_power * amp_spam) / (SNR_min_calc * h * f_hz * amp_gain * nf * (
+                    self.service.bit_rate / modulation['mod_factor']) * 1e9)  # eq. (1)
+        lmax_snr = lmax_snr / 1000  # convert to km
+
+        lmax_xt = 10 ** ((modulation['inband_xt'] - self.worst_xt - 4) / 10)  # Eq. (2) and -4 for penalty margin
+
+        if path_length < lmax_xt and path_length < lmax_snr:
+            return True
+        else:
+            return False
 
     def reset(self, only_counters=True):
         self.episode_bit_rate_requested = 0
@@ -444,6 +540,13 @@ class RMCSAEnv(OpticalNetworkEnv):
 
         return cur_spectrum_compactness
 
+def _worst_xt_by_core(cores) -> float:
+    """
+    Assigns a default worst crosstalk value based on the number of cores
+    """
+    worst_crosstalks_by_core = {7: -84.7, 12: -61.9, 19: -54.8}  # Cores: Crosstalk in dB
+    worst_xt = worst_crosstalks_by_core.get(cores)  # Worst aggregate intercore XT
+    return worst_xt
 
 def shortest_available_path_first_core_first_fit(env: RMCSAEnv) -> int:
     """
