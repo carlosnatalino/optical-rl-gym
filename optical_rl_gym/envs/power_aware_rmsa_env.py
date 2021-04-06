@@ -49,7 +49,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
-
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
@@ -104,7 +103,9 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision route, else service_accepted=False
                 sim_path = self.k_shortest_paths[self.service.source, self.service.destination][route].node_list
-                osnr = np.mean(propagation(launch_power, self.gnpy_network, sim_path, initial_slot, slots, self.eqpt_library))
+                propagate_output = propagation(launch_power, self.gnpy_network, sim_path, initial_slot, slots, self.eqpt_library, self.spectrum_slots_allocation, self.service, self.topology)
+                # print("propagate output: " + str(propagate_output))
+                osnr = np.mean(propagate_output)
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][route].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
