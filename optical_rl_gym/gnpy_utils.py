@@ -38,17 +38,17 @@ def topology_to_json(topology):
                                      }
                                  },
                                  "type": "Roadm"})
-        data["elements"].append({"uid": j,
-                                 "metadata": {
-                                     "location": {
-                                        "city": "",
-                                        "region": "",
-                                        "latitude": i,
-                                        "longitude": i
-                                     }
-                                 },
-                                 "type_variety": "CienaDB_medium_gain",
-                                 "type": "Edfa"})
+        # data["elements"].append({"uid": j,
+        #                          "metadata": {
+        #                              "location": {
+        #                                 "city": "",
+        #                                 "region": "",
+        #                                 "latitude": i,
+        #                                 "longitude": i
+        #                              }
+        #                          },
+        #                          "type_variety": "CienaDB_medium_gain",
+        #                          "type": "Edfa"})
 
     for node in topology.adj:
         for connected_node in topology.adj[node]:
@@ -56,7 +56,7 @@ def topology_to_json(topology):
                                      "type": "Fiber",
                                      "type_variety": "SSMF",
                                      "params": {
-                                         "length": topology.adj[node][connected_node]['length'] / 10.0,
+                                         "length": topology.adj[node][connected_node]['length'],
                                          "length_units": "km",
                                          "loss_coef": 0.2,
                                          "con_in": 1.00,
@@ -66,11 +66,6 @@ def topology_to_json(topology):
                                        "to_node": f"Fiber ({node} \u2192 {connected_node})"})
             data["connections"].append({"from_node": f"Fiber ({node} \u2192 {connected_node})",
                                        "to_node": connected_node})
-
-    # print(topology.degree)
-    # print(data['elements'])
-    # print(type(topology))
-    # print(dir(topology))
     return data
 
 
@@ -82,7 +77,7 @@ def load_files(gnpy_topology):
     return eqpt_library, gnpy_network
 
 
-def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt, running_services, service, topology):
+def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt, slots_allocation, service, topology):
     """ Calculate and output SNR based on inputs
         input_power: Power in decibels
         network: Network created from GNPy topology
@@ -90,35 +85,15 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt, r
         num_slots: number of slots in service
         eqpt: equipment library for GNPy """
 
-    # print("initial_slot" + str(initial_slot))
-    # print("num_slots: " + str(num_slots))
-
-    # print("INPUT POWER => " + str(input_power))
-
     # Values to create Spectral Information object
     spacing = 12.5e9
     min_freq = 195942783006536 + initial_slot * spacing
     max_freq = min_freq + (num_slots - 1) * spacing
     p = input_power
     p = db2lin(p) * 1e-3
-    # print("INPUT POWER => " + str(input_power))
-    # print("INPUT POWER => " + str(p))
     si = create_input_spectral_information(min_freq, max_freq, 0.15, 32e9, p, spacing)
 
-    print(sim_path)
-
-    # for service in running_services:
-    #     print(service.route.node_list)
-
-    '''
-    si.carriers=[
-            Channel(f, (f_min + spacing * f),
-                    baud_rate, roll_off, Power(power, 0, 0), 0, 0) for f in range(1, nb_channel + 1)
-        ]
-    '''
-
     p_total_db = input_power + lin2db(automatic_nch(min_freq, max_freq, spacing))
-    # print(p_total_db, end=':')
     build_network(network, eqpt, input_power, p_total_db)
 
     # Store network elements
@@ -129,8 +104,6 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt, r
 
     # Recreate path in the GNPy network using node list from simulator
     path = []
-
-    # print(fibers)
 
     for index, node in enumerate(sim_path):
         # add roadm to path
@@ -149,60 +122,68 @@ def propagation(input_power, network, sim_path, initial_slot, num_slots, eqpt, r
                     # add amplifier to path, if necessary
                     edfa = f"Edfa0_{uid}"
                     fiber_neighbors = [n.uid for n in neighbors(network, fibers[uid])]
-                    if edfa in edfas and edfa in fiber_neighbors:
-                        path.append(edfas[edfa])
+                    # if edfa in edfas and edfa in fiber_neighbors:
+                    #     path.append(edfas[edfa])
 
     current_node = 0
-    # print(path[-1])
+    sim_path_si = {}
+
+    print("potential service => " + str(sim_path))
+
     # Calculate effects of physical layer impairments
     for el in path:
         if isinstance(el, Roadm) or isinstance(el, Transceiver):
+
+            # print("")
+            # print("@" + sim_path[current_node])
+
+            sim_path_si[sim_path[current_node]] = si.carriers
+
             if current_node < len(sim_path) - 1:
-                count = 0
+                adjacent_services = {}
 
-                print(running_services[topology[sim_path[current_node]][sim_path[current_node + 1]]['index']])
-                print("CARRIERS BEFORE => " + str(len(si.carriers)))
+                for rs in topology.graph['running_services']:
+                    for i in range(len(sim_path)):
+                        if sim_path[i] in rs.route.node_list:
+                            rs_in = rs.route.node_list.index(sim_path[i])
 
-                for sid in running_services[topology[sim_path[current_node]][sim_path[current_node + 1]]['index']]:
-                    # print(str(service.service_id) + " == " + str(sid) + " ? " + str(sid != -1 and sid != service.service_id))
-                    if sid != -1 and sid != service.service_id:
-                        count += 1
+                            if rs_in + 1 < len(rs.route.node_list) and i + 1 < len(sim_path) and rs.route.node_list[rs_in + 1] == sim_path[i + 1] and rs.source == sim_path[current_node]:
+                                # print("rs_in = " + str(rs_in) + ", match => " + str(rs.route.node_list) + ", adding " + str(rs.number_slots) + "slots")
+                                adjacent_services[rs.service_id] = rs
 
-            
-                print("OTHER SVCS ON THIS PATH => " + str(count))
+                carriers = list(si.carriers[0:num_slots])
 
-                # print(si.carriers)
+                # print("initially...")
+                # print("len(carriers) = " + str(len(carriers)))
+                # print([c.channel_number for c in list(carriers)])
 
-                si = si._replace(carriers=[
-                    Channel(f, (min_freq + spacing * f),
-                            32e9, 0.15, Power(p, 0, 0), 0, 0) for f in range(1, num_slots + count + 1)
-                ])
+                for sid, s in adjacent_services.items():
+                    ref = s.power_values[sim_path[current_node]]
+                    l = len(carriers)
 
-                # print(si.carriers)
-                print("CARRIERS AFTER => " + str(len(si.carriers)))
+                    for i in range(len(ref)):
+                        carriers.append(
+                            Channel(
+                                channel_number=l + i + 1, 
+                                frequency=(min_freq + spacing * ref[i].channel_number), 
+                                baud_rate=32e9, 
+                                roll_off=0.15, 
+                                power=ref[i].power,
+                                chromatic_dispersion=ref[i].chromatic_dispersion,
+                                pmd=ref[i].pmd
+                            )
+                        )
+
+                si = si._replace(carriers=carriers)
+
             current_node += 1
 
-            # running_services[service.service_id, initial_slot:initial_slot + num_slots]
-        # print(el)
-        # print("Previous SI => " + str(si))
-        # print(si.carriers)
-        # print("ABOUT TO GO THROUGH => " + str(el))
+        # print([ch.power.nli for ch in si.carriers])
+
         si = el(si)
-        # print("SI => " + str(si))
 
-    # print(list(path))
-    # for el in path:
-        # if isinstance(el, Edfa):
-        # print(el)
-
-
-    # print(path[-1]) 
-    # print("NLI for each channel: " + str([c.power.nli for c in si.carriers]))
     destination_node = path[-1]
 
-    # print("")
+    print("FINAL VALUE " + str(destination_node.snr))
 
-    # print(destination_node.snr, end=":")
-
-    # print("Destination node SNR: " + str(destination_node.snr))
-    return destination_node.snr
+    return [destination_node.snr, sim_path_si]
