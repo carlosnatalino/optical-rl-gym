@@ -50,7 +50,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
-        print("AAAAA" + str(self.num_spectrum_resources))
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
@@ -118,7 +117,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                     self.service, 
                     self.topology
                 )
-                # print("propagate output: " + str(propagate_output))
                 osnr = np.mean(propagate_output[0])
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][route].best_modulation[
                     "minimum_osnr"]
@@ -136,19 +134,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                     self._add_release(self.service)
                 else:
                     self.service.accepted = False
-
-                print("Min OSNR: " + str(min_osnr))
-                print("OSNR > Min OSNR?: " + str(osnr > min_osnr))
-
-                # for i in self.topology.graph['running_services']:
-                #     print("power values for service " + str(i.service_id))
-                #     print(i.power_values)
-
-                # print(len(self.topology.graph['running_services']))
-                # np.set_printoptions(threshold=sys.maxsize)
-                # print("SHAPE => " + str(self.spectrum_slots_allocation))
-                # self.spectrum_slots_allocation[self.topology[path.node_list[i]][path.node_list[i + 1]]['index'], initial_slot:initial_slot + number_slots] = self.service.service_id
-                # print(self.topology['Berlin']['Leipzig'])
 
         else:
             self.service.accepted = False
@@ -172,9 +157,6 @@ class PowerAwareRMSA(OpticalNetworkEnv):
             'episode_bit_rate_blocking_rate': (
                                                       self.episode_bit_rate_requested - self.episode_bit_rate_provisioned) / self.episode_bit_rate_requested
         }
-
-        print(info)
-        print("")
 
         self._new_service = False
         self._next_service()
