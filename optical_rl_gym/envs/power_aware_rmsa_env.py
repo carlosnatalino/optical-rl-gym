@@ -4,6 +4,7 @@ import math
 import heapq
 import logging
 import functools
+import sys
 import numpy as np
 
 from optical_rl_gym.utils import Service, Route
@@ -49,10 +50,11 @@ class PowerAwareRMSA(OpticalNetworkEnv):
 
         self.bit_rate_lower_bound = bit_rate_lower_bound
         self.bit_rate_higher_bound = bit_rate_higher_bound
-
         self.spectrum_slots_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
                                                  fill_value=-1, dtype=np.int)
 
+        self.spectrum_power_allocation = np.full((self.topology.number_of_edges(), self.num_spectrum_resources),
+                                                 fill_value=-1, dtype=np.int)
         # do we allow proactive rejection or not?
         self.reject_action = 1 if allow_rejection else 0
 
@@ -104,18 +106,35 @@ class PowerAwareRMSA(OpticalNetworkEnv):
                                  initial_slot, slots):
                 # compute OSNR and check if it's greater or equal to min_osnr, only then provision route, else service_accepted=False
                 sim_path = self.k_shortest_paths[self.service.source, self.service.destination][route].node_list
-                osnr = np.mean(propagation(launch_power, self.gnpy_network, sim_path, initial_slot, slots, self.eqpt_library))
+                propagate_output = propagation(
+                    launch_power, 
+                    self.gnpy_network, 
+                    sim_path, 
+                    initial_slot, 
+                    slots, 
+                    self.eqpt_library, 
+                    self.spectrum_slots_allocation,
+                    self.service, 
+                    self.topology
+                )
+                osnr = np.mean(propagate_output[0])
                 min_osnr = self.k_shortest_paths[self.service.source, self.service.destination][route].best_modulation[
                     "minimum_osnr"]
                 if osnr >= min_osnr:
-                    self._provision_path(modulation, launch_power,  # implementation of power into provision_path
-                                         self.k_shortest_paths[self.service.source, self.service.destination][route],
-                                         initial_slot, slots)
+                    self._provision_path(
+                        modulation, 
+                        launch_power,  # implementation of power into provision_path
+                        self.k_shortest_paths[self.service.source, self.service.destination][route],
+                        initial_slot, 
+                        slots,
+                        propagate_output[1]
+                    )
                     self.service.accepted = True
                     self.actions_taken[route, modulation, initial_slot] += 1
                     self._add_release(self.service)
                 else:
                     self.service.accepted = False
+
         else:
             self.service.accepted = False
 
@@ -184,7 +203,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
     def render(self, mode='human'):
         return
 
-    def _provision_path(self, modulation, launch_power, path: Route, initial_slot, number_slots):
+    def _provision_path(self, modulation, launch_power, path: Route, initial_slot, number_slots, power_values):
         # usage
         if not self.is_path_free(path, initial_slot, number_slots):
             raise ValueError("Path {} has not enough capacity on slots {}-{}".format(path.node_list, path, initial_slot,
@@ -207,6 +226,7 @@ class PowerAwareRMSA(OpticalNetworkEnv):
         self.service.modulation = modulation
         self.service.initial_slot = initial_slot
         self.service.number_slots = number_slots
+        self.service.power_values = power_values
         self._update_network_stats()
 
         self.services_accepted += 1
@@ -458,10 +478,12 @@ def shortest_available_path_first_fit_fixed_power(env: PowerAwareRMSA) -> int:
     :return: action of iteration (path, modulations, spectrum resources, power)
     """
     modulations = len(env.topology.graph['modulations'])
-    power = 0   # Fixed power variable for validation method. Gets passed through simulator.
+    power = 6.3   # Fixed power variable for validation method. Gets passed through simulator.
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
+        # print("num slots: " + str(num_slots))
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
+            # print("env.topology.graph[...] - num_slots: " + str(env.topology.graph['num_spectrum_resources'] - num_slots))
             if env.is_path_free(path, initial_slot, num_slots):
                 # Returned is the best_modulation of the 'modulations' object
                 return [idp, env.topology.graph['modulations'].index(path.best_modulation), initial_slot, power]

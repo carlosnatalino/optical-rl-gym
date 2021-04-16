@@ -2,7 +2,8 @@ from itertools import islice
 import networkx as nx
 import numpy as np
 
-
+class Path:
+    pass
 class Route:
 
     def __init__(self, route_id, node_list, length, best_modulation=None):
