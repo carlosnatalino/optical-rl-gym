@@ -15,7 +15,34 @@ logging.getLogger('rmsaenv').setLevel(logging.INFO)
 seed = 20
 episodes = 10
 episode_length = 1000
-num_spatial_resources = 3
+num_spatial_resources = 7
+worst_xt = -84.7
+# Note: The simulator can automatically handle worst_crosstalk values for 7, 12, and 19 cores.
+# Besides that, a worst_xt value in dB must be specified and put in the enviroment.
+
+modulation_formats = np.array([
+    { # BPSK
+        'mod_factor':1, # Bits per symbol of each format
+        'snr_min':4.2,  # minimum signal-to-noise for each modulation format
+        'inband_xt':-14 # Crosstalk in dB
+    }, # BPSK
+    { # QPSK
+        'mod_factor':2,
+        'snr_min':7.2,
+        'inband_xt':-17
+    }, # QPSK
+    { # 16QAM
+        'mod_factor':4,
+        'snr_min':13.9,
+        'inband_xt':-23
+    }, # 16QAM
+    { # 64QAM
+        'mod_factor':6,
+        'snr_min':19.8,
+        'inband_xt':-29
+    }, # 64QAM
+])
+
 
 monitor_files = []
 policies = []
@@ -27,7 +54,9 @@ with open(os.path.join('..', 'examples', 'topologies', 'nsfnet_chen_eon_5-paths.
     topology = pickle.load(f)
 
 env_args = dict(topology=topology, seed=10, allow_rejection=True, load=load, mean_service_holding_time=25,
-                episode_length=episode_length, num_spectrum_resources=64, num_spatial_resources=num_spatial_resources)
+                episode_length=episode_length, num_spectrum_resources=64, num_spatial_resources=num_spatial_resources,
+                modulation_formats=modulation_formats, worst_xt=worst_xt
+                )
 
 print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
 
@@ -37,24 +66,24 @@ mean_reward_rnd, std_reward_rnd = evaluate_heuristic(env_rnd, random_policy, n_e
 print('Rnd:'.ljust(8), f'{mean_reward_rnd:.4f}  {std_reward_rnd:>7.4f}')
 print('\tBit rate blocking:', (init_env.episode_bit_rate_requested - init_env.episode_bit_rate_provisioned) / init_env.episode_bit_rate_requested)
 print('\tRequest blocking:', (init_env.episode_services_processed - init_env.episode_services_accepted) / init_env.episode_services_processed)
-print(init_env.topology.graph['throughput'])
+print('Throughput:', init_env.topology.graph['throughput'])
 
-env_sap = gym.make('RMCSA-v0', **env_args)
-mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sap, shortest_available_path_first_core_first_fit, n_eval_episodes=episodes)
+# env_sap = gym.make('RMCSA-v0', **env_args)
+# mean_reward_sap, std_reward_sap = evaluate_heuristic(env_sap, shortest_available_path_first_core_first_fit, n_eval_episodes=episodes)
 
-print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
-
-# Initial Metrics for Environment
-print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
-print('\tBit rate blocking:', (env_sap.episode_bit_rate_requested - env_sap.episode_bit_rate_provisioned) / env_sap.episode_bit_rate_requested)
-print('\tRequest blocking:', (env_sap.episode_services_processed - env_sap.episode_services_accepted) / env_sap.episode_services_processed)
-
-# Additional Metrics For Environment
-print('\tThroughput:', env_sap.topology.graph['throughput'])
-print('\tCompactness:', env_sap.topology.graph['compactness'])
-print('\tResource Utilization:', np.mean(env_sap.utilization))
-for key, value in env_sap.core_utilization.items():
-    print('\t\tUtilization per core ({}): {}'.format(key, np.mean(env_sap.core_utilization[key])))
+# print('STR'.ljust(5), 'REW'.rjust(7), 'STD'.rjust(7))
+#
+# # Initial Metrics for Environment
+# print('SAP-FF:'.ljust(8), f'{mean_reward_sap:.4f}  {std_reward_sap:.4f}')
+# print('\tBit rate blocking:', (env_sap.episode_bit_rate_requested - env_sap.episode_bit_rate_provisioned) / env_sap.episode_bit_rate_requested)
+# print('\tRequest blocking:', (env_sap.episode_services_processed - env_sap.episode_services_accepted) / env_sap.episode_services_processed)
+#
+# # Additional Metrics For Environment
+# print('\tThroughput:', env_sap.topology.graph['throughput'])
+# print('\tCompactness:', env_sap.topology.graph['compactness'])
+# print('\tResource Utilization:', np.mean(env_sap.utilization))
+# for key, value in env_sap.core_utilization.items():
+#     print('\t\tUtilization per core ({}): {}'.format(key, np.mean(env_sap.core_utilization[key])))
 
 """
 #Specific - modify
