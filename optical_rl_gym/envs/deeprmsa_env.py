@@ -1,3 +1,4 @@
+from typing import Tuple
 import gym
 import numpy as np
 
@@ -87,7 +88,7 @@ class DeepRMSAEnv(RMSAEnv):
     def reset(self, only_counters=True):
         return super().reset(only_counters=only_counters)
 
-    def _get_path_block_id(self, action: int) -> (int, int):
+    def _get_path_block_id(self, action: int) -> Tuple[int, int]:
         path = action // self.j
         block = action % self.j
         return path, block

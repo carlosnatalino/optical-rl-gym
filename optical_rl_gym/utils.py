@@ -30,6 +30,7 @@ class Service:
         self.number_slots = number_slots
         self.route = None
         self.initial_slot = None
+        self.wavelength = None
         self.accepted = False
 
     def __str__(self):
