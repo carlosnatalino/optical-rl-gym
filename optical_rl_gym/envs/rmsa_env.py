@@ -1,3 +1,4 @@
+from typing import Tuple
 import gym
 import copy
 import math
@@ -84,7 +85,7 @@ class RMSAEnv(OpticalNetworkEnv):
         if reset:
             self.reset(only_counters=False)
 
-    def step(self, action: [int]):
+    def step(self, action):
         path, initial_slot = action[0], action[1]
         self.actions_output[path, initial_slot] += 1
         if path < self.k_paths and initial_slot < self.num_spectrum_resources:  # action is for assigning a path
@@ -151,7 +152,7 @@ class RMSAEnv(OpticalNetworkEnv):
 
         self.topology.graph["compactness"] = 0.
         self.topology.graph["throughput"] = 0.
-        for idx, lnk in enumerate(self.topology.edges()):
+        for lnk in self.topology.edges():
             self.topology[lnk[0]][lnk[1]]['external_fragmentation'] = 0.
             self.topology[lnk[0]][lnk[1]]['compactness'] = 0.
 
@@ -302,7 +303,7 @@ class RMSAEnv(OpticalNetworkEnv):
                                arrival_time=at, holding_time=ht, bit_rate=bit_rate)
         self._new_service = True
 
-    def _get_path_slot_id(self, action: int) -> (int, int):
+    def _get_path_slot_id(self, action: int) -> Tuple[int, int]:
         """
         Decodes the single action index into the path index and the slot index to be used.
 

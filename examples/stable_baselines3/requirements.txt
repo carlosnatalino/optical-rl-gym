@@ -1,2 +1,2 @@
-stable-baselines3
-tensorboard
+stable-baselines3[extra]
+jupyterlab
