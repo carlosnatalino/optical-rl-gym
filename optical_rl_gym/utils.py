@@ -1,56 +1,64 @@
-from itertools import islice
-
 import typing
+from dataclasses import dataclass, field
+from itertools import islice
+from typing import Optional, Sequence, Tuple, Union
+
 import networkx as nx
 import numpy as np
 
 if typing.TYPE_CHECKING:
     from optical_rl_gym.envs.optical_network_env import OpticalNetworkEnv
 
-class Route:
 
-    def __init__(self, route_id, node_list, length, best_modulation=None):
-        self.path_id = route_id
-        self.node_list = node_list
-        self.length = length
-        self.best_modulation = best_modulation
-        self.hops = len(node_list) - 1
+@dataclass
+class Modulation:
+    name: str
+    # maximum length in km
+    maximum_length: Union[int, float]
+    # number of bits per Hz per sec.
+    spectral_efficiency: int
+    # minimum OSNR that allows it to work
+    minimum_osnr: Optional[float] = field(default=None)
+    # maximum in-band cross-talk
+    inband_xt: Optional[float] = field(default=None)
 
 
+@dataclass
+class Path:
+    path_id: int
+    node_list: Tuple[str]
+    hops: int
+    length: Union[int, float]
+    best_modulation: Optional[Modulation] = field(default=None)
+    current_modulation: Optional[Modulation] = field(default=None)
+
+
+@dataclass(repr=False)
 class Service:
-
-    def __init__(self, service_id, source, source_id, destination=None, destination_id=None, arrival_time=None,
-                 holding_time=None, bit_rate=None, best_modulation=None, service_class=None, number_slots=None,
-                 core=None, launch_power=None):
-
-        self.service_id = service_id
-        self.arrival_time = arrival_time
-        self.holding_time = holding_time
-        self.source = source
-        self.source_id = source_id
-        self.destination = destination
-        self.destination_id = destination_id
-        self.bit_rate = bit_rate
-        self.service_class = service_class
-        self.best_modulation = best_modulation
-        self.number_slots = number_slots
-        self.core = core
-        self.route = None
-        self.initial_slot = None
-        self.wavelength = None
-        self.accepted = False
-        self.launch_power = launch_power
+    service_id: int
+    source: str
+    source_id: int
+    destination: Optional[str] = field(default=None)
+    destination_id: Optional[str] = field(default=None)
+    arrival_time: Optional[float] = field(default=None)
+    holding_time: Optional[float] = field(default=None)
+    bit_rate: Optional[float] = field(default=None)
+    path: Optional[Path] = field(default=None)
+    best_modulation: Optional[Modulation] = field(default=None)
+    service_class: Optional[int] = field(default=None)
+    number_slots: Optional[int] = field(default=None)
+    core: Optional[int] = field(default=None)
+    launch_power: Optional[float] = field(default=None)
+    accepted: bool = field(default=False)
 
     def __str__(self):
-        msg = '{'
-        msg += '' if self.bit_rate is None else f'br: {self.bit_rate}, '
-        msg += '' if self.service_class is None else f'cl: {self.service_class}, '
-        return f'Serv. {self.service_id} ({self.source} -> {self.destination})' + msg
+        msg = "{"
+        msg += "" if self.bit_rate is None else f"br: {self.bit_rate}, "
+        msg += "" if self.service_class is None else f"cl: {self.service_class}, "
+        return f"Serv. {self.service_id} ({self.source} -> {self.destination})" + msg
 
-class Path:
-    """Dummy Class"""
 
-def start_environment(env: 'OpticalNetworkEnv', steps: int) -> 'OpticalNetworkEnv':
+def start_environment(env: "OpticalNetworkEnv", steps: int) -> "OpticalNetworkEnv":
     done = True
     for i in range(steps):
         if done:
@@ -68,17 +76,38 @@ def get_k_shortest_paths(G, source, target, k, weight=None):
     return list(islice(nx.shortest_simple_paths(G, source, target, weight=weight), k))
 
 
-def get_path_weight(graph, path, weight='length'):
+def get_path_weight(graph, path, weight="length"):
     return np.sum([graph[path[i]][path[i + 1]][weight] for i in range(len(path) - 1)])
+
+
+def get_best_modulation_format(
+    length: float, modulations: Sequence[Modulation]
+) -> Modulation:
+    # sorts modulation from the most to the least spectrally efficient
+    sorted_modulations = sorted(
+        modulations, key=lambda x: x.spectral_efficiency, reverse=True
+    )
+    for i in range(len(modulations)):
+        if length <= sorted_modulations[i].maximum_length:
+            return sorted_modulations[i]
+    raise ValueError(
+        "It was not possible to find a suitable MF for a path with {} km".format(length)
+    )
 
 
 def random_policy(env):
     return env.action_space.sample()
 
 
-def evaluate_heuristic(env: 'OpticalNetworkEnv', heuristic, n_eval_episodes=10,
-                       render=False, callback=None, reward_threshold=None,
-                       return_episode_rewards=False):
+def evaluate_heuristic(
+    env: "OpticalNetworkEnv",
+    heuristic,
+    n_eval_episodes=10,
+    render=False,
+    callback=None,
+    reward_threshold=None,
+    return_episode_rewards=False,
+):
     episode_rewards, episode_lengths = [], []
     for _ in range(n_eval_episodes):
         _ = env.reset()
@@ -101,8 +130,11 @@ def evaluate_heuristic(env: 'OpticalNetworkEnv', heuristic, n_eval_episodes=10,
     std_reward = np.std(episode_rewards)
 
     if reward_threshold is not None:
-        assert mean_reward > reward_threshold, 'Mean reward below threshold: ' \
-                                               '{:.2f} < {:.2f}'.format(mean_reward, reward_threshold)
+        assert (
+            mean_reward > reward_threshold
+        ), "Mean reward below threshold: " "{:.2f} < {:.2f}".format(
+            mean_reward, reward_threshold
+        )
     if return_episode_rewards:
         return episode_rewards, episode_lengths
     return mean_reward, std_reward
