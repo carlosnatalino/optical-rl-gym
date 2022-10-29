@@ -2,7 +2,6 @@ import gym
 
 
 class UseInfoReward(gym.RewardWrapper):
-
     def __init__(self, env, info_key):
         self.env = env
         self.info_key = info_key

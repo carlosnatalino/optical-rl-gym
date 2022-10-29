@@ -13,11 +13,14 @@
   location = {Bari, Italy},
   month = {July},
   pages = {Mo.C1.1},
+  doi={10.1109/ICTON51198.2020.9203239},
   url = {https://github.com/carlosnatalino/optical-rl-gym}
 }
 ```
 
 ## List of publications using this tool:
+
+You can see an updated list of works citing this tool in [Google Scholar](https://scholar.google.com.br/scholar?cites=2956599177960193581&as_sdt=2005&sciodt=0,5&hl=en).
 
 - Núñez Kasaneva, J. I. (2022). Aplicación de Reinforcement Learning para los problemas de Survivable-Routing, Modulation Level and Spectrum Assigment.
 - Etezadi, E., Natalino, C., Diaz, R., Lindgren, A., Melin, S., Wosinska, L., ... & Furdek, M. (2022). DeepDefrag: a deep reinforcement learning framework for spectrum defragmentation.
