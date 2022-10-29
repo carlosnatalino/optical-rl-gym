@@ -1,3 +1,4 @@
+from typing import Tuple
 import gym
 import copy
 import math
@@ -126,7 +127,7 @@ class RMSAEnv(OpticalNetworkEnv):
         if reset:
             self.reset(only_episode_counters=False)
 
-    def step(self, action: [int]):
+    def step(self, action):
         path, initial_slot = action[0], action[1]
 
         # registering overall statistics
@@ -241,7 +242,7 @@ class RMSAEnv(OpticalNetworkEnv):
 
         self.topology.graph["compactness"] = 0.
         self.topology.graph["throughput"] = 0.
-        for idx, lnk in enumerate(self.topology.edges()):
+        for lnk in self.topology.edges():
             self.topology[lnk[0]][lnk[1]]['external_fragmentation'] = 0.
             self.topology[lnk[0]][lnk[1]]['compactness'] = 0.
 
@@ -413,7 +414,7 @@ class RMSAEnv(OpticalNetworkEnv):
                 self._add_release(service_to_release)  # puts service back in the queue
                 break  # breaks the loop
 
-    def _get_path_slot_id(self, action: int) -> (int, int):
+    def _get_path_slot_id(self, action: int) -> Tuple[int, int]:
         """
         Decodes the single action index into the path index and the slot index to be used.
 
@@ -528,33 +529,33 @@ class RMSAEnv(OpticalNetworkEnv):
         return cur_spectrum_compactness
 
 
-def shortest_path_first_fit(env: RMSAEnv) -> int:
+def shortest_path_first_fit(env: RMSAEnv) -> Tuple[int, int]:
     num_slots = env.get_number_slots(env.k_shortest_paths[env.service.source, env.service.destination][0])
     for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
         if env.is_path_free(env.k_shortest_paths[env.service.source, env.service.destination][0], initial_slot, num_slots):
-            return [0, initial_slot]
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+            return (0, initial_slot)
+    return (env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'])
 
 
-def shortest_available_path_first_fit(env: RMSAEnv) -> int:
+def shortest_available_path_first_fit(env: RMSAEnv) -> Tuple[int, int]:
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
             if env.is_path_free(path, initial_slot, num_slots):
-                return [idp, initial_slot]
-    return [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+                return (idp, initial_slot)
+    return (env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'])
 
 
-def least_loaded_path_first_fit(env: RMSAEnv) -> int:
+def least_loaded_path_first_fit(env: RMSAEnv) -> Tuple[int, int]:
     max_free_slots = 0
-    action = [env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources']]
+    action = (env.topology.graph['k_paths'], env.topology.graph['num_spectrum_resources'])
     for idp, path in enumerate(env.k_shortest_paths[env.service.source, env.service.destination]):
         num_slots = env.get_number_slots(path)
         for initial_slot in range(0, env.topology.graph['num_spectrum_resources'] - num_slots):
             if env.is_path_free(path, initial_slot, num_slots):
                 free_slots = np.sum(env.get_available_slots(path))
                 if free_slots > max_free_slots:
-                    action = [idp, initial_slot]
+                    action = (idp, initial_slot)
                     max_free_slots = free_slots
                 break # breaks the loop for the initial slot
     return action
@@ -588,16 +589,16 @@ class PathOnlyFirstFitAction(gym.ActionWrapper):
         self.action_space = gym.spaces.Discrete(self.env.k_paths + self.env.reject_action)
         self.observation_space = env.observation_space
 
-    def action(self, action):
+    def action(self, action) -> Tuple[int, int]:
         if action < self.env.k_paths:
             num_slots = self.env.get_number_slots(self.env.k_shortest_paths[self.env.service.source,
                                                                             self.env.service.destination][action])
             for initial_slot in range(0, self.env.topology.graph['num_spectrum_resources'] - num_slots):
                 if self.env.is_path_free(self.env.k_shortest_paths[self.env.service.source,
                                                                    self.env.service.destination][action],
-                                         initial_slot, num_slots):
-                    return [action, initial_slot]
-        return [self.env.topology.graph['k_paths'], self.env.topology.graph['num_spectrum_resources']]
+                                        initial_slot, num_slots):
+                    return (action, initial_slot)
+        return (self.env.topology.graph['k_paths'], self.env.topology.graph['num_spectrum_resources'])
 
     def step(self, action):
         return self.env.step(self.action(action))
