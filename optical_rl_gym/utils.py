@@ -1,9 +1,11 @@
 from itertools import islice
 
+import typing
 import networkx as nx
 import numpy as np
 
-from optical_rl_gym.envs.optical_network_env import OpticalNetworkEnv
+if typing.TYPE_CHECKING:
+    from optical_rl_gym.envs.optical_network_env import OpticalNetworkEnv
 
 class Path:
 
@@ -42,7 +44,7 @@ class Service:
         return f'Serv. {self.service_id} ({self.source} -> {self.destination})' + msg
 
 
-def start_environment(env: OpticalNetworkEnv, steps: int) -> OpticalNetworkEnv:
+def start_environment(env: 'OpticalNetworkEnv', steps: int) -> 'OpticalNetworkEnv':
     done = True
     for i in range(steps):
         if done:
@@ -68,7 +70,7 @@ def random_policy(env):
     return env.action_space.sample()
 
 
-def evaluate_heuristic(env: OpticalNetworkEnv, heuristic, n_eval_episodes=10,
+def evaluate_heuristic(env: 'OpticalNetworkEnv', heuristic, n_eval_episodes=10,
                        render=False, callback=None, reward_threshold=None,
                        return_episode_rewards=False):
     episode_rewards, episode_lengths = [], []

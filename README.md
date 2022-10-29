@@ -54,10 +54,10 @@ You will be able to run the [examples](#examples) right away.
 You can see the dependencies in the [setup.py](setup.py) file.
 
 **To traing reinforcement learning agents, you must create or install reinforcement learning agents. Here are some of the libraries containing RL agents:**
-- [Stable baselines](https://github.com/hill-a/stable-baselines)
-- [OpenAI Baselines](https://github.com/openai/baselines) -- in maintenance mode
-- [ChainerRL](https://github.com/chainer/chainerrl)
+- [Stable-baselines3](https://stable-baselines3.readthedocs.io/)
 - [TensorFlow Agents](https://www.tensorflow.org/agents)
+- [ChainerRL](https://github.com/chainer/chainerrl)
+- [OpenAI Baselines](https://github.com/openai/baselines) -- in maintenance mode
 
 <a href="#environments"><h2>Environments</h2></a>
 
@@ -65,6 +65,7 @@ At this moment, the following environments are ready for use:
 
 1. RWAEnv
 2. RMSAEnv
+3. DeepRMSA
 
 More environments will be added in the near future.
 
