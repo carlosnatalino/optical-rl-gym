@@ -1,0 +1,11 @@
+# file containing the configuration for several tools used
+# THIS FILE MUST NOT BE CHANGED
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88
+src_paths = "."
+skip_gitignore = true
