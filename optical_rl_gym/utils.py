@@ -3,6 +3,11 @@ from dataclasses import dataclass, field
 from itertools import islice
 from typing import Optional, Sequence, Tuple, Union
 
+import typing
+from dataclasses import dataclass, field
+from itertools import islice
+from typing import Optional, Sequence, Tuple, Union
+
 import networkx as nx
 import numpy as np
 
