@@ -37,7 +37,7 @@ class QoSConstrainedRA(OpticalNetworkEnv):
             num_spectrum_resources=num_spectrum_resources,
             node_request_probabilities=node_request_probabilities,
             seed=seed,
-            k_paths=k_paths,
+            # k_paths=k_paths,
         )
 
         assert num_service_classes == len(classes_arrival_probabilities)
