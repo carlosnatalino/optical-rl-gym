@@ -116,7 +116,7 @@ class RMSAEnv(OpticalNetworkEnv):
         self.spectrum_slots_allocation = np.full(
             (self.topology.number_of_edges(), self.num_spectrum_resources),
             fill_value=-1,
-            dtype=np.int,
+            dtype=int,
         )
 
         # do we allow proactive rejection or not?
@@ -341,7 +341,7 @@ class RMSAEnv(OpticalNetworkEnv):
         self.spectrum_slots_allocation = np.full(
             (self.topology.number_of_edges(), self.num_spectrum_resources),
             fill_value=-1,
-            dtype=np.int,
+            dtype=int,
         )
 
         if self.bit_rate_selection == "discrete":
