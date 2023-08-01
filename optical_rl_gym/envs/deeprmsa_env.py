@@ -36,7 +36,7 @@ class DeepRMSAEnv(RMSAEnv):
             1 + 2 * self.topology.number_of_nodes() + (2 * self.j + 3) * self.k_paths
         )
         self.observation_space = gym.spaces.Box(
-            low=0, high=1, dtype=np.uint8, shape=(shape,)
+            low=-2**30, high=2**30, dtype=np.float64, shape=(shape,)
         )
         self.action_space = gym.spaces.Discrete(
             self.k_paths * self.j + self.reject_action
