@@ -22,7 +22,7 @@ policies = []
 topology_name = "nsfnet_chen"
 k_paths = 5
 with open(
-    os.path.join("..", "examples", "topologies", f"{topology_name}_{k_paths}-paths.h5"),
+    os.path.join("..", "examples", "topologies", f"{topology_name}_{k_paths}-paths_6-modulations.h5"),
     "rb",
 ) as f:
     topology = pickle.load(f)

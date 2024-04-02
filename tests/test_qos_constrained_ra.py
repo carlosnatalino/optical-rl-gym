@@ -34,7 +34,7 @@ load = 50
 # topology_name = 'nobel-us'
 # topology_name = 'germany50'
 with open(
-    os.path.join("..", "examples", "topologies", "nsfnet_chen_5-paths.h5"), "rb"
+    os.path.join("..", "examples", "topologies", "nsfnet_chen_5-paths_6-modulations.h5"), "rb"
 ) as f:
     topology = pickle.load(f)
 

@@ -6,8 +6,4 @@ Before running the examples, make sure to install the Optical RL-Gym and the Sta
 
 This code should run using Python 3.8 or Python 3.9.
 
-Note that the OpenAI Gym package might output some errors during installation, but should work fine.
-
-Alternatively, you can run
-
-`pip install -r requirements.txt`
+Make sure to follow the instructions available in the README file at the root of this repository.
